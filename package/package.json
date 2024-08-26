@@ -80,6 +80,7 @@
   },
   "homepage": "https://react-native-vision-camera.com/",
   "publishConfig": {
+    "access": "public",
     "registry": "https://registry.npmjs.org/"
   },
   "devDependencies": {
