@@ -1,5 +1,5 @@
 {
-  "name": "@sdtech/react-native-vision-camera",
+  "name": "@sdtech/rn-vision-camera",
   "version": "0.0.0",
   "description": "A powerful, high-performance React Native Camera library.",
   "main": "lib/commonjs/index",
