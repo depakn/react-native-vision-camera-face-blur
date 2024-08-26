@@ -406,7 +406,7 @@ final class CameraSession: NSObject, AVCaptureVideoDataOutputSampleBufferDelegat
       let constrainedFaceBounds = scaledFaceBounds.intersection(image.extent)
 
       let blurFilter = CIFilter(name: "CIGaussianBlur")!
-      blurFilter.setValue(30.0, forKey: kCIInputRadiusKey)
+      blurFilter.setValue(95.0, forKey: kCIInputRadiusKey)
       blurFilter.setValue(image.cropped(to: constrainedFaceBounds), forKey: kCIInputImageKey)
 
       if let blurredFace = blurFilter.outputImage {
