@@ -1,6 +1,6 @@
 {
   "name": "@sdtech/react-native-vision-camera",
-  "version": "4.5.2",
+  "version": "0.0.0",
   "description": "A powerful, high-performance React Native Camera library.",
   "main": "lib/commonjs/index",
   "module": "lib/module/index",
