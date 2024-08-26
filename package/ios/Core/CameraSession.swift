@@ -311,15 +311,15 @@ final class CameraSession: NSObject, AVCaptureVideoDataOutputSampleBufferDelegat
       return
     }
 
-    let ciImage = CIImage(cvPixelBuffer: pixelBuffer)
+    var ciImage = CIImage(cvPixelBuffer: pixelBuffer)
 
     // Apply orientation correction
-    let orientedImage = ciImage.oriented(forExifOrientation: orientation.exifOrientation)
+    ciImage = ciImage.oriented(orientation.cgImagePropertyOrientation)
 
     // Detect faces
     let faceDetectionRequest = VNDetectFaceLandmarksRequest()
     do {
-      try faceDetector.perform([faceDetectionRequest], on: orientedImage)
+      try faceDetector.perform([faceDetectionRequest], on: ciImage, orientation: .up)
     } catch {
       os_log(
         "Face detection failed: %{public}@", log: logger, type: .error, error.localizedDescription)
@@ -329,13 +329,13 @@ final class CameraSession: NSObject, AVCaptureVideoDataOutputSampleBufferDelegat
     os_log("Detected %d faces", log: logger, type: .debug, faces.count)
 
     // Blur detected faces
-    let blurredImage = applyFaceBlur(to: orientedImage, faces: faces)
+    let blurredImage = applyFaceBlur(to: ciImage, faces: faces)
 
     if isDebugMode {
       frameCount += 1
       if frameCount % 60 == 0 {  // Save every 60th frame
         saveImageForDebug(ciImage: blurredImage, prefix: "blurred", orientation: orientation)
-        saveImageForDebug(ciImage: orientedImage, prefix: "original", orientation: orientation)
+        saveImageForDebug(ciImage: ciImage, prefix: "original", orientation: orientation)
 
         // Log face detection details
         for (index, face) in faces.enumerated() {
@@ -381,32 +381,23 @@ final class CameraSession: NSObject, AVCaptureVideoDataOutputSampleBufferDelegat
       return image
     }
 
-    let imageSize = image.extent.size
     var outputImage = image
+    let imageSize = image.extent.size
 
     for (index, face) in faces.enumerated() {
-      let faceBounds = face.boundingBox
+      // Convert normalized coordinates to pixel coordinates
+      let faceBounds = VNImageRectForNormalizedRect(
+        face.boundingBox, Int(imageSize.width), Int(imageSize.height))
 
       // Add padding to face bounds (10% on each side)
-      let paddedFaceBounds = CGRect(
-        x: max(0, faceBounds.origin.x - faceBounds.width * 0.1),
-        y: max(0, faceBounds.origin.y - faceBounds.height * 0.1),
-        width: min(1 - faceBounds.origin.x, faceBounds.width * 1.2),
-        height: min(1 - faceBounds.origin.y, faceBounds.height * 1.2)
-      )
-
-      let scaledFaceBounds = CGRect(
-        x: paddedFaceBounds.origin.x * imageSize.width,
-        y: (1 - paddedFaceBounds.origin.y - paddedFaceBounds.height) * imageSize.height,
-        width: paddedFaceBounds.width * imageSize.width,
-        height: paddedFaceBounds.height * imageSize.height
-      )
+      let paddedFaceBounds = faceBounds.insetBy(
+        dx: -faceBounds.width * 0.1, dy: -faceBounds.height * 0.1)
 
       // Ensure the blur area is within the image bounds
-      let constrainedFaceBounds = scaledFaceBounds.intersection(image.extent)
+      let constrainedFaceBounds = paddedFaceBounds.intersection(image.extent)
 
       let blurFilter = CIFilter(name: "CIGaussianBlur")!
-      blurFilter.setValue(95.0, forKey: kCIInputRadiusKey)
+      blurFilter.setValue(99.0, forKey: kCIInputRadiusKey)
       blurFilter.setValue(image.cropped(to: constrainedFaceBounds), forKey: kCIInputImageKey)
 
       if let blurredFace = blurFilter.outputImage {
@@ -517,12 +508,12 @@ final class CameraSession: NSObject, AVCaptureVideoDataOutputSampleBufferDelegat
 }
 
 extension Orientation {
-  var exifOrientation: Int32 {
+  var cgImagePropertyOrientation: CGImagePropertyOrientation {
     switch self {
-    case .portrait: return 6
-    case .portraitUpsideDown: return 8
-    case .landscapeLeft: return 3
-    case .landscapeRight: return 1
+    case .portrait: return .right
+    case .portraitUpsideDown: return .left
+    case .landscapeLeft: return .down
+    case .landscapeRight: return .up
     }
   }
 
@@ -530,8 +521,8 @@ extension Orientation {
     switch self {
     case .portrait: return .right
     case .portraitUpsideDown: return .left
-    case .landscapeLeft: return .up
-    case .landscapeRight: return .down
+    case .landscapeLeft: return .down
+    case .landscapeRight: return .up
     }
   }
 }
