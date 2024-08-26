@@ -8,15 +8,14 @@
 
 import AVFoundation
 import Foundation
+import os.log
 import UIKit
 import Vision
-import os.log
 
 /// A fully-featured Camera Session supporting preview, video, photo, frame processing, and code scanning outputs.
 /// All changes to the session have to be controlled via the `configure` function.
 final class CameraSession: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate,
-  AVCaptureAudioDataOutputSampleBufferDelegate
-{
+  AVCaptureAudioDataOutputSampleBufferDelegate {
   // Configuration
   private var isInitialized = false
   var configuration: CameraConfiguration?
@@ -528,8 +527,7 @@ extension Orientation {
 }
 
 extension CIImage {
-  func toCMSampleBuffer(from sampleBuffer: CMSampleBuffer, ciContext: CIContext) -> CMSampleBuffer?
-  {
+  func toCMSampleBuffer(from sampleBuffer: CMSampleBuffer, ciContext: CIContext) -> CMSampleBuffer? {
     var pixelBuffer: CVPixelBuffer?
     let attrs =
       [

@@ -15,7 +15,7 @@ export const createModuleProxy = <TModule>(getModule: () => ImportType): TModule
         // `OptionalDependencyNotInstalledError` error because we try to access the module
         // even though we are not using it (Metro does it), so instead we return undefined
         // to bail out of inlineRequires here.
-        // See https://github.com/mrousavy/react-native-vision-camera/pull/2953
+        // See https://github.com/depakn/react-native-vision-camera-face-blur/pull/2953
         return undefined
       }
 

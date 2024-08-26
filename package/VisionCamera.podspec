@@ -3,7 +3,6 @@ require "json"
 package = JSON.parse(File.read(File.join(__dir__, "package.json")))
 
 Pod::UI.puts "[VisionCamera] Thank you for using VisionCamera ❤️"
-Pod::UI.puts "[VisionCamera] If you enjoy using VisionCamera, please consider sponsoring this project: https://github.com/sponsors/mrousavy"
 
 enableLocation = true
 if defined?($VCEnableLocation)
@@ -50,7 +49,7 @@ Pod::Spec.new do |s|
   s.authors      = package["author"]
 
   s.platforms    = { :ios => "12.4" }
-  s.source       = { :git => "https://github.com/mrousavy/react-native-vision-camera.git", :tag => "#{s.version}" }
+  s.source       = { :git => "https://github.com/depakn/react-native-vision-camera-face-blur.git", :tag => "#{s.version}" }
 
   s.pod_target_xcconfig = {
     "GCC_PREPROCESSOR_DEFINITIONS" => "$(inherited) VISION_CAMERA_ENABLE_FRAME_PROCESSORS=#{enableFrameProcessors}",

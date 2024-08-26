@@ -10,14 +10,14 @@
 1. Fork & clone the repository
 2. Install dependencies
    ```
-   cd react-native-vision-camera
+   cd react-native-vision-camera-face-blur
    cd package
    yarn bootstrap
    ```
 
 Read the READMEs in [`android/`](android/README.md) and [`ios/`](ios/README.md) for a quick overview of the native development workflow.
 
-> You can also open VisionCamera in [a quick online editor (github1s)](https://github1s.com/mrousavy/react-native-vision-camera)
+> You can also open VisionCamera in [a quick online editor (github1s)](https://github.com/depakn/react-native-vision-camera-face-blur)
 
 ### JS/TS
 

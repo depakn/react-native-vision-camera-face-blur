@@ -1,5 +1,5 @@
 {
-  "name": "react-native-vision-camera",
+  "name": "@sdtech/react-native-vision-camera",
   "version": "4.5.2",
   "description": "A powerful, high-performance React Native Camera library.",
   "main": "lib/commonjs/index",
@@ -72,11 +72,11 @@
     "processing",
     "realtime"
   ],
-  "repository": "https://github.com/mrousavy/react-native-vision-camera",
-  "author": "Marc Rousavy <me@mrousavy.com> (https://github.com/mrousavy)",
+  "repository": "https://github.com/depakn/react-native-vision-camera-face-blur",
+  "author": "Deepak Natarajan <deepak@studiodiseno.com> (https://github.com/depakn)",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/mrousavy/react-native-vision-camera/issues"
+    "url": "https://github.com/depakn/react-native-vision-camera-face-blur/issues"
   },
   "homepage": "https://react-native-vision-camera.com/",
   "publishConfig": {

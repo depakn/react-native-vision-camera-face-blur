@@ -29,7 +29,7 @@
 To try the playground out for yourself, run the following commands:
 
 ```sh
-git clone https://github.com/mrousavy/react-native-vision-camera
+git clone https://github.com/depakn/react-native-vision-camera-face-blur
 cd react-native-vision-camera/package
 yarn bootstrap
 ```
