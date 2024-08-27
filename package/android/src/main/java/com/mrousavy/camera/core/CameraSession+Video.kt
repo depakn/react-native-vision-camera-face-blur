@@ -92,6 +92,9 @@ fun CameraSession.stopRecording() {
 
   recording.stop()
   this.recording = null
+
+  videoEncoder?.stop()
+  videoEncoder = null
 }
 
 fun CameraSession.cancelRecording() {

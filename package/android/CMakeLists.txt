@@ -40,6 +40,7 @@ add_library(
         src/main/cpp/frameprocessors/java-bindings/JFrameProcessorPlugin.cpp
         src/main/cpp/frameprocessors/java-bindings/JVisionCameraProxy.cpp
         src/main/cpp/frameprocessors/java-bindings/JVisionCameraScheduler.cpp
+        src/main/cpp/blur.cpp
 )
 
 # Header Search Paths (includes)

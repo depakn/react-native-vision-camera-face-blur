@@ -68,6 +68,11 @@ class CameraSession(internal val context: Context, internal val callback: Callba
   // Threading
   internal val mainExecutor = ContextCompat.getMainExecutor(context)
 
+  // Face Detection
+  internal val overlay = Overlay(context)
+  internal lateinit var videoProcessor: VideoProcessor
+  internal var videoEncoder: VideoEncoder? = null
+
   // Orientation
   val outputOrientation: Orientation
     get() = orientationManager.outputOrientation

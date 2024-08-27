@@ -22,6 +22,7 @@ import com.mrousavy.camera.core.extensions.*
 import com.mrousavy.camera.core.types.CameraDeviceFormat
 import com.mrousavy.camera.core.types.Torch
 import com.mrousavy.camera.core.types.VideoStabilizationMode
+import java.io.File
 import kotlin.math.roundToInt
 
 private fun assertFormatRequirement(
@@ -122,6 +123,7 @@ internal fun CameraSession.configureOutputs(configuration: CameraConfiguration) 
       Recorder.Builder().also { recorder ->
         configuration.format?.let { format ->
           recorder.setQualitySelector(format.videoQualitySelector)
+          Log.i(CameraSession.TAG, "Video format: ${format.videoSize}")
         }
         // TODO: Make videoBitRate a Camera Prop
         // video.setTargetVideoEncodingBitRate()
@@ -160,6 +162,7 @@ internal fun CameraSession.configureOutputs(configuration: CameraConfiguration) 
           .build()
         video.setResolutionSelector(resolutionSelector)
       }
+      Log.i(CameraSession.TAG, "Video configuration complete")
     }.build()
     videoOutput = video
     recorderOutput = recorder
@@ -192,7 +195,12 @@ internal fun CameraSession.configureOutputs(configuration: CameraConfiguration) 
         analysis.setResolutionSelector(resolutionSelector)
       }
     }.build()
-    val pipeline = FrameProcessorPipeline(callback)
+    val outputFile = File(context.getExternalFilesDir(null), "processed_video.mp4")
+    val width = format?.videoSize?.width ?: 1280
+    val height = format?.videoSize?.height ?: 640
+    videoEncoder = VideoEncoder(width, height, outputFile)
+    videoProcessor = VideoProcessor(width, height)
+    val pipeline = FrameProcessorPipeline(overlay, camera, videoProcessor, videoEncoder)
     analyzer.setAnalyzer(CameraQueues.videoQueue.executor, pipeline)
     frameProcessorOutput = analyzer
   } else {
