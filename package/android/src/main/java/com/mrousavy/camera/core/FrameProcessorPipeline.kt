@@ -18,8 +18,7 @@ import java.util.concurrent.Executor
 import java.util.concurrent.Executors
 
 class FrameProcessorPipeline(
-  private val overlay: Overlay,
-  private val camera: Camera?,
+  private var isFrontFacing: Boolean,
   private val videoProcessor: VideoProcessor?,
   private val videoEncoder: VideoEncoder?
 ) : Analyzer {
@@ -35,17 +34,18 @@ class FrameProcessorPipeline(
     .build()
   private val detector = FaceDetection.getClient(options)
 
+  fun updateIsFrontFacing(newIsFrontFacing: Boolean) {
+    isFrontFacing = newIsFrontFacing
+  }
+
   @OptIn(ExperimentalGetImage::class)
   override fun analyze(imageProxy: ImageProxy) {
     val currentTimestamp = System.currentTimeMillis()
-
     if (currentTimestamp - lastProcessingTimestamp < MINIMUM_PROCESSING_INTERVAL_MS) {
       imageProxy.close()
       return
     }
 
-    overlay.setPreviewSize(Size(imageProxy.width, imageProxy.height))
-    Log.d(TAG, "w: ${imageProxy.width}, h: ${imageProxy.height}")
     processingExecutor.execute {
       try {
         detectFaces(imageProxy)
@@ -60,13 +60,12 @@ class FrameProcessorPipeline(
 
   private fun processDetectedFaces(faces: List<Face>, imageProxy: ImageProxy) {
     try {
-      overlay.setFaces(faces)
       if (videoProcessor != null && videoEncoder != null) {
-        val isFrontFacing = camera?.cameraInfo?.lensFacing == CameraSelector.LENS_FACING_FRONT
+
         val processedFrame = videoProcessor.processFrame(imageProxy, faces, isFrontFacing)
 
         // Log the processed frame details
-        Log.d(TAG, "Processed frame: ${processedFrame.width}x${processedFrame.height}")
+        Log.d(TAG, "Processed frame: ${processedFrame.width}x${processedFrame.height} (isFrontFacing: ${isFrontFacing})")
 
         // Draw to surface and encode
         videoProcessor.drawToSurface(processedFrame, videoEncoder.inputSurface)

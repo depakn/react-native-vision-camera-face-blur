@@ -207,8 +207,10 @@ internal fun CameraSession.configureOutputs(configuration: CameraConfiguration) 
       videoEncoder = VideoEncoder(width, height, outputFile)
       videoProcessor = VideoProcessor(width, height)
     }
-    val pipeline = FrameProcessorPipeline(overlay, camera, videoProcessor, videoEncoder)
-    analyzer.setAnalyzer(CameraQueues.videoQueue.executor, pipeline)
+
+    isFrontFacing = camera?.cameraInfo?.lensFacing == CameraSelector.LENS_FACING_FRONT
+    frameProcessorPipeline = FrameProcessorPipeline(isFrontFacing, videoProcessor, videoEncoder)
+    analyzer.setAnalyzer(CameraQueues.videoQueue.executor, frameProcessorPipeline!!)
     frameProcessorOutput = analyzer
   } else {
     frameProcessorOutput = null
@@ -298,6 +300,12 @@ internal suspend fun CameraSession.configureCamera(provider: ProcessCameraProvid
         callback.onStopped()
       }
       lastIsStreaming = isStreaming
+    }
+
+    val newIsFrontFacing = camera!!.cameraInfo.lensFacing == CameraSelector.LENS_FACING_FRONT
+    if (isFrontFacing != newIsFrontFacing) {
+      isFrontFacing = newIsFrontFacing
+      frameProcessorPipeline?.updateIsFrontFacing(isFrontFacing)
     }
 
     val error = state.error
