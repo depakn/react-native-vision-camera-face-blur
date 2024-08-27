@@ -4,7 +4,7 @@ import type { GestureResponderEvent } from 'react-native'
 import { StyleSheet, Text, View } from 'react-native'
 import type { PinchGestureHandlerGestureEvent } from 'react-native-gesture-handler'
 import { PinchGestureHandler, TapGestureHandler } from 'react-native-gesture-handler'
-import type { CameraProps, CameraRuntimeError, PhotoFile, VideoFile } from '@sdtech/react-native-vision-camera'
+import type { CameraProps, CameraRuntimeError, PhotoFile, VideoFile } from '@sdtech/rn-vision-camera'
 import {
   runAtTargetFps,
   useCameraDevice,
@@ -12,8 +12,8 @@ import {
   useFrameProcessor,
   useLocationPermission,
   useMicrophonePermission,
-} from '@sdtech/react-native-vision-camera'
-import { Camera } from '@sdtech/react-native-vision-camera'
+} from '@sdtech/rn-vision-camera'
+import { Camera } from '@sdtech/rn-vision-camera'
 import { CONTENT_SPACING, CONTROL_BUTTON_SIZE, MAX_ZOOM_FACTOR, SAFE_AREA_PADDING, SCREEN_HEIGHT, SCREEN_WIDTH } from './Constants'
 import Reanimated, { Extrapolate, interpolate, useAnimatedGestureHandler, useAnimatedProps, useSharedValue } from 'react-native-reanimated'
 import { useEffect } from 'react'
