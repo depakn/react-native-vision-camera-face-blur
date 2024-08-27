@@ -20,6 +20,7 @@ import androidx.camera.video.VideoCapture
 import androidx.lifecycle.Lifecycle
 import com.mrousavy.camera.core.extensions.*
 import com.mrousavy.camera.core.types.CameraDeviceFormat
+import com.mrousavy.camera.core.types.Orientation
 import com.mrousavy.camera.core.types.Torch
 import com.mrousavy.camera.core.types.VideoStabilizationMode
 import java.io.File
@@ -198,8 +199,14 @@ internal fun CameraSession.configureOutputs(configuration: CameraConfiguration) 
     val outputFile = File(context.getExternalFilesDir(null), "processed_video.mp4")
     val width = format?.videoSize?.width ?: 1280
     val height = format?.videoSize?.height ?: 640
-    videoEncoder = VideoEncoder(width, height, outputFile)
-    videoProcessor = VideoProcessor(width, height)
+
+    if (outputOrientation == Orientation.PORTRAIT || outputOrientation == Orientation.PORTRAIT_UPSIDE_DOWN) {
+      videoEncoder = VideoEncoder(height, width, outputFile)
+      videoProcessor = VideoProcessor(height, width)
+    } else {
+      videoEncoder = VideoEncoder(width, height, outputFile)
+      videoProcessor = VideoProcessor(width, height)
+    }
     val pipeline = FrameProcessorPipeline(overlay, camera, videoProcessor, videoEncoder)
     analyzer.setAnalyzer(CameraQueues.videoQueue.executor, pipeline)
     frameProcessorOutput = analyzer
