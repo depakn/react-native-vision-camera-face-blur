@@ -1,5 +1,5 @@
-import type { Frame } from '@sdtech/rn-vision-camera'
-import { VisionCameraProxy } from '@sdtech/rn-vision-camera'
+import type { Frame } from '@sd-tech/rn-camera-face-blur'
+import { VisionCameraProxy } from '@sd-tech/rn-camera-face-blur'
 
 const plugin = VisionCameraProxy.initFrameProcessorPlugin('example_kotlin_swift_plugin', { foo: 'bar' })
 

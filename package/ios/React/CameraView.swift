@@ -232,7 +232,7 @@ public final class CameraView: UIView, CameraSessionDelegate, PreviewViewDelegat
 
       // Location tagging
       config.enableLocation = enableLocation && isActive
-        
+
       config.shouldBlurFace = shouldBlurFace
 
       // Video Stabilization

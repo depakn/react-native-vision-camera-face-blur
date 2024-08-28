@@ -52,7 +52,7 @@ final class CameraConfiguration {
 
   // Audio Session
   var audio: OutputConfiguration<Audio> = .disabled
-    
+
   var shouldBlurFace: Bool = false
 
   init(copyOf other: CameraConfiguration?) {
@@ -104,7 +104,7 @@ final class CameraConfiguration {
 
     let audioSessionChanged: Bool
     let locationChanged: Bool
-      
+
     let shouldBlurFace: Bool
 
     /**
@@ -150,7 +150,7 @@ final class CameraConfiguration {
 
       // location
       locationChanged = left?.enableLocation != right.enableLocation
-        
+
       shouldBlurFace = left?.shouldBlurFace != right.shouldBlurFace
     }
   }

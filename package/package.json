@@ -1,5 +1,5 @@
 {
-  "name": "@sdtech/rn-vision-camera",
+  "name": "@sd-tech/rn-camera-face-blur",
   "version": "0.0.0",
   "description": "A powerful, high-performance React Native Camera library.",
   "main": "lib/commonjs/index",
