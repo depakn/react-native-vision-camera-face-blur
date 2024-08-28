@@ -1,6 +1,7 @@
 package com.mrousavy.camera.core
 
 import android.annotation.SuppressLint
+import android.media.MediaMetadataRetriever
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
@@ -12,9 +13,15 @@ import androidx.camera.video.VideoRecordEvent
 import com.mrousavy.camera.core.extensions.getCameraError
 import com.mrousavy.camera.core.types.RecordVideoOptions
 import com.mrousavy.camera.core.types.Video
+import java.io.File
+
+import com.arthenica.mobileffmpeg.FFmpeg
+import com.arthenica.mobileffmpeg.Config
+import com.arthenica.mobileffmpeg.LogMessage
+import com.arthenica.mobileffmpeg.Statistics
 
 @OptIn(ExperimentalPersistentRecording::class)
-@SuppressLint("MissingPermission", "RestrictedApi")
+@SuppressLint("MissingPermission", "RestrictedApi", "SetWorldReadable")
 fun CameraSession.startRecording(
   enableAudio: Boolean,
   options: RecordVideoOptions,
@@ -80,17 +87,81 @@ fun CameraSession.startRecording(
         // Prepare output result
         val durationMs = event.recordingStats.recordedDurationNanos / 1_000_000
         Log.i(CameraSession.TAG, "Successfully completed video recording! Captured ${durationMs.toDouble() / 1_000.0} seconds.")
-        val path = event.outputResults.outputUri.path ?: throw UnknownRecorderError(false, null)
+        val sourceVideopath = event.outputResults.outputUri.path ?: throw UnknownRecorderError(false, null)
         val size = videoOutput.attachedSurfaceResolution ?: Size(0, 0)
-        val processedPath = context.cacheDir.absolutePath + "/processed_video.mov"
-        val video = Video(processedPath, durationMs, size)
+        val processedVideoPath = context.cacheDir.absolutePath + "/processed_video.mov"
+        val finalOutputFile = File(context.cacheDir, "final_video.mov")
+        finalOutputFile.setReadable(true, false)
 
         val handler = Handler(Looper.getMainLooper())
 
         handler.postDelayed({
+          mergeAudioVideo(processedVideoPath, sourceVideopath, finalOutputFile.absolutePath)
+        }, 5500)
+
+        handler.postDelayed({
+          val video = Video(finalOutputFile.absolutePath, durationMs, size)
           callback(video)
-        }, 3000)
+        }, 6000)
       }
+    }
+  }
+}
+
+fun isVideoFileValid(filePath: String): Boolean {
+  val retriever = MediaMetadataRetriever()
+  return try {
+    retriever.setDataSource(filePath)
+    val hasVideo = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_HAS_VIDEO)
+    hasVideo == "yes"
+  } catch (e: Exception) {
+    Log.e("VideoValidation", "Error validating video file: ${e.message}")
+    false
+  } finally {
+    retriever.release()
+  }
+}
+
+fun mergeAudioVideo(processedVideoPath: String, sourceVideoPath: String, outputFilePath: String): Boolean {
+  // Check if input files exist and are readable
+  if (!File(processedVideoPath).exists() || !File(sourceVideoPath).exists()) {
+    Log.e("FFMPEG", "Input file does not exist")
+    return false
+  }
+
+  // Validate processed video file
+  if (!isVideoFileValid(processedVideoPath)) {
+    Log.e("FFMPEG", "Processed video file is not valid: $processedVideoPath")
+    return false
+  }
+
+  // FFmpeg command
+  val command = arrayOf(
+    "-i", processedVideoPath,
+    "-i", sourceVideoPath,
+    "-c:v", "copy",
+    "-c:a", "aac",
+    "-map", "0:v:0",
+    "-map", "1:a:0",
+    "-shortest",
+    outputFilePath
+  )
+
+  Log.d("FFMPEG", "Executing command: ${command.joinToString(" ")}")
+
+  // Execute FFmpeg command
+  val rc = FFmpeg.execute(command)
+
+  return when (rc) {
+    Config.RETURN_CODE_SUCCESS -> {
+      Log.i("FFMPEG", "Command execution completed successfully.")
+      true
+    }
+    else -> {
+      val lastCommandOutput = Config.getLastCommandOutput()
+      Log.e("FFMPEG", "Command execution failed with rc=$rc and the output below.")
+      Log.e("FFMPEG", "Last command output: $lastCommandOutput")
+      false
     }
   }
 }
