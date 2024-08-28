@@ -176,6 +176,11 @@ class CameraViewManager : ViewGroupManager<CameraView>() {
     view.photoHdr = photoHdr
   }
 
+  @ReactProp(name = "shouldBlurFace")
+  fun setShouldBlurFace(view: CameraView, shouldBlurFace: Boolean) {
+    view.shouldBlurFace = shouldBlurFace
+  }
+
   @ReactProp(name = "photoQualityBalance")
   fun setPhotoQualityBalance(view: CameraView, photoQualityBalance: String?) {
     if (photoQualityBalance != null) {

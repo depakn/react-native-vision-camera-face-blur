@@ -43,7 +43,10 @@ data class CameraConfiguration(
   var isActive: Boolean = false,
 
   // Audio Session
-  var audio: Output<Audio> = Output.Disabled.create()
+  var audio: Output<Audio> = Output.Disabled.create(),
+
+  // Face Blur
+  var shouldBlurFace: Boolean = false
 ) {
   // Output<T> types, those need to be comparable
   data class CodeScanner(val codeTypes: List<CodeType>)
@@ -131,7 +134,8 @@ data class CameraConfiguration(
         left.preview != right.preview ||
         left.format != right.format ||
         left.minFps != right.minFps ||
-        left.maxFps != right.maxFps
+        left.maxFps != right.maxFps ||
+        left.shouldBlurFace != right.shouldBlurFace
 
       // input device
       val deviceChanged = outputsChanged || left?.cameraId != right.cameraId

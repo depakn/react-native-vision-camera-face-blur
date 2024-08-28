@@ -75,6 +75,7 @@ class CameraView(context: Context) :
   var videoStabilizationMode: VideoStabilizationMode? = null
   var videoHdr = false
   var photoHdr = false
+  var shouldBlurFace = false
 
   // TODO: Use .BALANCED once CameraX fixes it https://issuetracker.google.com/issues/337214687
   var photoQualityBalance = QualityBalance.SPEED
@@ -201,6 +202,8 @@ class CameraView(context: Context) :
 
         // Location
         config.enableLocation = enableLocation && this@CameraView.isActive
+
+        config.shouldBlurFace = shouldBlurFace
 
         // Code Scanner
         val codeScanner = codeScannerOptions

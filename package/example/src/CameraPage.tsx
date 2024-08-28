@@ -205,6 +205,7 @@ export function CameraPage({ navigation }: Props): React.ReactElement {
                 ref={camera}
                 onInitialized={onInitialized}
                 onError={onError}
+                shouldBlurFace={true}
                 onStarted={() => console.log('Camera started!')}
                 onStopped={() => console.log('Camera stopped!')}
                 onPreviewStarted={() => console.log('Preview started!')}

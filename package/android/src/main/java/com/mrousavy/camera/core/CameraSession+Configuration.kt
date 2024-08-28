@@ -174,7 +174,7 @@ internal fun CameraSession.configureOutputs(configuration: CameraConfiguration) 
 
   // 4. Frame Processor
   val frameProcessorConfig = configuration.frameProcessor as? CameraConfiguration.Output.Enabled<CameraConfiguration.FrameProcessor>
-  if (frameProcessorConfig != null) {
+  if (frameProcessorConfig != null && configuration.shouldBlurFace) {
     val pixelFormat = frameProcessorConfig.config.pixelFormat
     Log.i(CameraSession.TAG, "Creating $pixelFormat Frame Processor output...")
     val analyzer = ImageAnalysis.Builder().also { analysis ->
@@ -196,6 +196,7 @@ internal fun CameraSession.configureOutputs(configuration: CameraConfiguration) 
         analysis.setResolutionSelector(resolutionSelector)
       }
     }.build()
+
     val outputFile = File(context.cacheDir, "processed_video.mov")
     outputFile.setReadable(true, false)
     val width = format?.videoSize?.width ?: 1280

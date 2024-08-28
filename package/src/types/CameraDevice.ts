@@ -91,6 +91,10 @@ export interface CameraDeviceFormat {
    */
   supportsPhotoHdr: boolean
   /**
+   * Specifies whether face blur should be applied on videos
+   */
+  shouldBlurFace: boolean
+  /**
    * Specifies whether this format supports delivering depth data for photo or video capture.
    */
   supportsDepthCapture: boolean

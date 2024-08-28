@@ -89,20 +89,26 @@ fun CameraSession.startRecording(
         Log.i(CameraSession.TAG, "Successfully completed video recording! Captured ${durationMs.toDouble() / 1_000.0} seconds.")
         val sourceVideopath = event.outputResults.outputUri.path ?: throw UnknownRecorderError(false, null)
         val size = videoOutput.attachedSurfaceResolution ?: Size(0, 0)
-        val processedVideoPath = context.cacheDir.absolutePath + "/processed_video.mov"
-        val finalOutputFile = File(context.cacheDir, "final_video.mov")
-        finalOutputFile.setReadable(true, false)
 
-        val handler = Handler(Looper.getMainLooper())
+        if (configuration?.shouldBlurFace == true) {
+          val processedVideoPath = context.cacheDir.absolutePath + "/processed_video.mov"
+          val finalOutputFile = File(context.cacheDir, "final_video.mov")
+          finalOutputFile.setReadable(true, false)
 
-        handler.postDelayed({
-          mergeAudioVideo(processedVideoPath, sourceVideopath, finalOutputFile.absolutePath)
-        }, 5500)
+          val handler = Handler(Looper.getMainLooper())
 
-        handler.postDelayed({
-          val video = Video(finalOutputFile.absolutePath, durationMs, size)
+          handler.postDelayed({
+            mergeAudioVideo(processedVideoPath, sourceVideopath, finalOutputFile.absolutePath)
+          }, 5500)
+
+          handler.postDelayed({
+            val video = Video(finalOutputFile.absolutePath, durationMs, size)
+            callback(video)
+          }, 6000)
+        } else {
+          val video = Video(sourceVideopath, durationMs, size)
           callback(video)
-        }, 6000)
+        }
       }
     }
   }

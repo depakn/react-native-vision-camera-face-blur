@@ -210,6 +210,10 @@ export interface CameraProps extends ViewProps {
    */
   photoHdr?: boolean
   /**
+   * Should blur faces
+   */
+  shouldBlurFace?: boolean
+  /**
    * Configures the photo pipeline for a specific quality balance prioritization.
    * - `'speed'`: Prioritizes fast capture speed over quality (faster edge-detection, distortion correction, AF/AE/AWB times, etc.)
    * - `'balanced'`: A balanced set of prioritization configurations
