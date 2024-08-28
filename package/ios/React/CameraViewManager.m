@@ -54,6 +54,7 @@ RCT_EXPORT_VIEW_PROPERTY(exposure, NSNumber);
 RCT_EXPORT_VIEW_PROPERTY(enableZoomGesture, BOOL);
 RCT_EXPORT_VIEW_PROPERTY(outputOrientation, NSString);
 RCT_EXPORT_VIEW_PROPERTY(resizeMode, NSString);
+RCT_EXPORT_VIEW_PROPERTY(shouldBlurFace, BOOL);
 // Camera View Events
 RCT_REMAP_VIEW_PROPERTY(onError, onErrorEvent, RCTDirectEventBlock);
 RCT_REMAP_VIEW_PROPERTY(onInitialized, onInitializedEvent, RCTDirectEventBlock);

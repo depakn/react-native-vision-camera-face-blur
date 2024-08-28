@@ -53,6 +53,7 @@ public final class CameraView: UIView, CameraSessionDelegate, PreviewViewDelegat
   @objc var photoQualityBalance: NSString?
   @objc var lowLightBoost = false
   @objc var outputOrientation: NSString?
+  @objc var shouldBlurFace = false
 
   // other props
   @objc var isActive = false
@@ -231,6 +232,8 @@ public final class CameraView: UIView, CameraSessionDelegate, PreviewViewDelegat
 
       // Location tagging
       config.enableLocation = enableLocation && isActive
+        
+      config.shouldBlurFace = shouldBlurFace
 
       // Video Stabilization
       if let jsVideoStabilizationMode = videoStabilizationMode as? String {

@@ -52,6 +52,8 @@ final class CameraConfiguration {
 
   // Audio Session
   var audio: OutputConfiguration<Audio> = .disabled
+    
+  var shouldBlurFace: Bool = false
 
   init(copyOf other: CameraConfiguration?) {
     if let other {
@@ -73,6 +75,7 @@ final class CameraConfiguration {
       exposure = other.exposure
       isActive = other.isActive
       audio = other.audio
+      shouldBlurFace = other.shouldBlurFace
     } else {
       // self will just be initialized with the default values.
     }
@@ -101,6 +104,8 @@ final class CameraConfiguration {
 
     let audioSessionChanged: Bool
     let locationChanged: Bool
+      
+    let shouldBlurFace: Bool
 
     /**
      Returns `true` when props that affect the AVCaptureSession configuration (i.e. props that require beginConfiguration()) have changed.
@@ -145,6 +150,8 @@ final class CameraConfiguration {
 
       // location
       locationChanged = left?.enableLocation != right.enableLocation
+        
+      shouldBlurFace = left?.shouldBlurFace != right.shouldBlurFace
     }
   }
 
