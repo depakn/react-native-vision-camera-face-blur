@@ -78,18 +78,22 @@ export function MediaPage({ navigation, route }: Props): React.ReactElement {
     }
   }, [path, type])
 
-  const source = useMemo(() => ({ uri: `file://${path}` }), [path])
-
   const screenStyle = useMemo(() => ({ opacity: hasMediaLoaded ? 1 : 0 }), [hasMediaLoaded])
 
   return (
     <View style={[styles.container, screenStyle]}>
       {type === 'photo' && (
-        <Image source={source} style={StyleSheet.absoluteFill} resizeMode="cover" onLoadEnd={onMediaLoadEnd} onLoad={onMediaLoad} />
+        <Image
+          source={{ uri: `file://${path}` }}
+          style={StyleSheet.absoluteFill}
+          resizeMode="cover"
+          onLoadEnd={onMediaLoadEnd}
+          onLoad={onMediaLoad}
+        />
       )}
       {type === 'video' && (
         <Video
-          source={source}
+          source={{ uri: `${path}` }}
           style={StyleSheet.absoluteFill}
           paused={isVideoPaused}
           resizeMode="cover"

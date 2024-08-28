@@ -43,7 +43,7 @@ private fun assertFormatRequirement(
 }
 
 @OptIn(ExperimentalGetImage::class)
-@SuppressLint("RestrictedApi")
+@SuppressLint("RestrictedApi", "SetWorldReadable")
 @Suppress("LiftReturnOrAssignment")
 internal fun CameraSession.configureOutputs(configuration: CameraConfiguration) {
   Log.i(CameraSession.TAG, "Creating new Outputs for Camera #${configuration.cameraId}...")
@@ -196,7 +196,8 @@ internal fun CameraSession.configureOutputs(configuration: CameraConfiguration) 
         analysis.setResolutionSelector(resolutionSelector)
       }
     }.build()
-    val outputFile = File(context.getExternalFilesDir(null), "processed_video.mp4")
+    val outputFile = File(context.cacheDir, "processed_video.mov")
+    outputFile.setReadable(true, false)
     val width = format?.videoSize?.width ?: 1280
     val height = format?.videoSize?.height ?: 640
 

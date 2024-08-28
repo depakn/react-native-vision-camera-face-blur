@@ -1,6 +1,8 @@
 package com.mrousavy.camera.core
 
 import android.annotation.SuppressLint
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import android.util.Size
 import androidx.annotation.OptIn
@@ -80,8 +82,14 @@ fun CameraSession.startRecording(
         Log.i(CameraSession.TAG, "Successfully completed video recording! Captured ${durationMs.toDouble() / 1_000.0} seconds.")
         val path = event.outputResults.outputUri.path ?: throw UnknownRecorderError(false, null)
         val size = videoOutput.attachedSurfaceResolution ?: Size(0, 0)
-        val video = Video(path, durationMs, size)
-        callback(video)
+        val processedPath = context.cacheDir.absolutePath + "/processed_video.mov"
+        val video = Video(processedPath, durationMs, size)
+
+        val handler = Handler(Looper.getMainLooper())
+
+        handler.postDelayed({
+          callback(video)
+        }, 3000)
       }
     }
   }
