@@ -7,7 +7,6 @@ import android.media.AudioManager
 import android.util.Log
 import androidx.annotation.MainThread
 import androidx.camera.core.Camera
-import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageCapture
 import androidx.camera.core.Preview
@@ -68,12 +67,7 @@ class CameraSession(internal val context: Context, internal val callback: Callba
 
   // Threading
   internal val mainExecutor = ContextCompat.getMainExecutor(context)
-
-  // Face Detection
-  internal lateinit var videoProcessor: VideoProcessor
-  internal var videoEncoder: VideoEncoder? = null
-  internal var frameProcessorPipeline: FrameProcessorPipeline? = null
-  internal var isFrontFacing: Boolean = camera?.cameraInfo?.lensFacing == CameraSelector.LENS_FACING_FRONT
+  var faceDetectionRecorder: FaceDetectionRecorder
 
   // Orientation
   val outputOrientation: Orientation
@@ -86,6 +80,7 @@ class CameraSession(internal val context: Context, internal val callback: Callba
         Log.i(TAG, "Camera Lifecycle changed to ${event.targetState}!")
       }
     })
+    faceDetectionRecorder = FaceDetectionRecorder(context)
   }
 
   override fun close() {
