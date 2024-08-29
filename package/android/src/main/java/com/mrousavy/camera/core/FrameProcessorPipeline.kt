@@ -6,13 +6,14 @@ import androidx.camera.core.ImageAnalysis.Analyzer
 import androidx.camera.core.ImageProxy
 import com.mrousavy.camera.frameprocessors.Frame
 
-class FrameProcessorPipeline(private val callback: CameraSession.Callback) : Analyzer {
+class FrameProcessorPipeline(private val callback: CameraSession.Callback, private val faceDetectionRecorder: FaceDetectionRecorder) : Analyzer {
   @OptIn(ExperimentalGetImage::class)
   override fun analyze(imageProxy: ImageProxy) {
     val frame = Frame(imageProxy)
     try {
       frame.incrementRefCount()
       callback.onFrame(frame)
+      faceDetectionRecorder.processFrame(frame, imageProxy.imageInfo.rotationDegrees)
     } finally {
       frame.decrementRefCount()
     }

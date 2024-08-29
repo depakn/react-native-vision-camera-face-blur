@@ -192,7 +192,7 @@ internal fun CameraSession.configureOutputs(configuration: CameraConfiguration) 
         analysis.setResolutionSelector(resolutionSelector)
       }
     }.build()
-    val pipeline = FrameProcessorPipeline(callback)
+    val pipeline = FrameProcessorPipeline(callback, faceDetectionRecorder)
     analyzer.setAnalyzer(CameraQueues.videoQueue.executor, pipeline)
     frameProcessorOutput = analyzer
   } else {

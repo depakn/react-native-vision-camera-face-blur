@@ -8,8 +8,10 @@ import androidx.camera.video.ExperimentalPersistentRecording
 import androidx.camera.video.FileOutputOptions
 import androidx.camera.video.VideoRecordEvent
 import com.mrousavy.camera.core.extensions.getCameraError
+import com.mrousavy.camera.core.types.Orientation
 import com.mrousavy.camera.core.types.RecordVideoOptions
 import com.mrousavy.camera.core.types.Video
+import java.io.File
 
 @OptIn(ExperimentalPersistentRecording::class)
 @SuppressLint("MissingPermission", "RestrictedApi")
@@ -40,10 +42,23 @@ fun CameraSession.startRecording(
   }
   pendingRecording = pendingRecording.asPersistentRecording()
 
+  val processedVideoFile = File(context.cacheDir, "processed_${System.currentTimeMillis()}.mp4")
+
   isRecordingCanceled = false
   recording = pendingRecording.start(CameraQueues.cameraExecutor) { event ->
     when (event) {
-      is VideoRecordEvent.Start -> Log.i(CameraSession.TAG, "Recording started!")
+      is VideoRecordEvent.Start -> {
+        Log.i(CameraSession.TAG, "Recording started!")
+
+        val width = configuration?.format?.videoWidth ?: 640
+        val height = configuration?.format?.videoHeight ?: 1280
+
+        if (outputOrientation == Orientation.PORTRAIT || outputOrientation == Orientation.PORTRAIT_UPSIDE_DOWN) {
+          faceDetectionRecorder.startRecording(processedVideoFile, Size(height, width))
+        } else {
+          faceDetectionRecorder.startRecording(processedVideoFile, Size(width, height))
+        }
+      }
 
       is VideoRecordEvent.Resume -> Log.i(CameraSession.TAG, "Recording resumed!")
 
@@ -75,12 +90,14 @@ fun CameraSession.startRecording(
           }
         }
 
+        faceDetectionRecorder.stopRecording()
+
         // Prepare output result
         val durationMs = event.recordingStats.recordedDurationNanos / 1_000_000
         Log.i(CameraSession.TAG, "Successfully completed video recording! Captured ${durationMs.toDouble() / 1_000.0} seconds.")
-        val path = event.outputResults.outputUri.path ?: throw UnknownRecorderError(false, null)
+        val processedVideoPath = processedVideoFile.absolutePath
         val size = videoOutput.attachedSurfaceResolution ?: Size(0, 0)
-        val video = Video(path, durationMs, size)
+        val video = Video(processedVideoPath, durationMs, size)
         callback(video)
       }
     }

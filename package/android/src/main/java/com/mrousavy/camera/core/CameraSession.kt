@@ -67,6 +67,7 @@ class CameraSession(internal val context: Context, internal val callback: Callba
 
   // Threading
   internal val mainExecutor = ContextCompat.getMainExecutor(context)
+  var faceDetectionRecorder: FaceDetectionRecorder
 
   // Orientation
   val outputOrientation: Orientation
@@ -79,6 +80,7 @@ class CameraSession(internal val context: Context, internal val callback: Callba
         Log.i(TAG, "Camera Lifecycle changed to ${event.targetState}!")
       }
     })
+    faceDetectionRecorder = FaceDetectionRecorder(context)
   }
 
   override fun close() {
