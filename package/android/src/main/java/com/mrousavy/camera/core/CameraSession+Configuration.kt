@@ -20,10 +20,8 @@ import androidx.camera.video.VideoCapture
 import androidx.lifecycle.Lifecycle
 import com.mrousavy.camera.core.extensions.*
 import com.mrousavy.camera.core.types.CameraDeviceFormat
-import com.mrousavy.camera.core.types.Orientation
 import com.mrousavy.camera.core.types.Torch
 import com.mrousavy.camera.core.types.VideoStabilizationMode
-import java.io.File
 import kotlin.math.roundToInt
 
 private fun assertFormatRequirement(
@@ -43,7 +41,7 @@ private fun assertFormatRequirement(
 }
 
 @OptIn(ExperimentalGetImage::class)
-@SuppressLint("RestrictedApi", "SetWorldReadable")
+@SuppressLint("RestrictedApi")
 @Suppress("LiftReturnOrAssignment")
 internal fun CameraSession.configureOutputs(configuration: CameraConfiguration) {
   Log.i(CameraSession.TAG, "Creating new Outputs for Camera #${configuration.cameraId}...")
@@ -124,7 +122,6 @@ internal fun CameraSession.configureOutputs(configuration: CameraConfiguration) 
       Recorder.Builder().also { recorder ->
         configuration.format?.let { format ->
           recorder.setQualitySelector(format.videoQualitySelector)
-          Log.i(CameraSession.TAG, "Video format: ${format.videoSize}")
         }
         // TODO: Make videoBitRate a Camera Prop
         // video.setTargetVideoEncodingBitRate()
@@ -147,7 +144,7 @@ internal fun CameraSession.configureOutputs(configuration: CameraConfiguration) 
       if (fpsRange != null) {
         assertFormatRequirement("fps", format, InvalidFpsError(fpsRange.upper)) {
           fpsRange.lower >= it.minFps &&
-            fpsRange.upper <= it.maxFps
+              fpsRange.upper <= it.maxFps
         }
         video.setTargetFrameRate(fpsRange)
       }
@@ -163,7 +160,6 @@ internal fun CameraSession.configureOutputs(configuration: CameraConfiguration) 
           .build()
         video.setResolutionSelector(resolutionSelector)
       }
-      Log.i(CameraSession.TAG, "Video configuration complete")
     }.build()
     videoOutput = video
     recorderOutput = recorder
@@ -174,7 +170,7 @@ internal fun CameraSession.configureOutputs(configuration: CameraConfiguration) 
 
   // 4. Frame Processor
   val frameProcessorConfig = configuration.frameProcessor as? CameraConfiguration.Output.Enabled<CameraConfiguration.FrameProcessor>
-  if (frameProcessorConfig != null && configuration.shouldBlurFace) {
+  if (frameProcessorConfig != null) {
     val pixelFormat = frameProcessorConfig.config.pixelFormat
     Log.i(CameraSession.TAG, "Creating $pixelFormat Frame Processor output...")
     val analyzer = ImageAnalysis.Builder().also { analysis ->
@@ -183,7 +179,7 @@ internal fun CameraSession.configureOutputs(configuration: CameraConfiguration) 
       if (fpsRange != null) {
         assertFormatRequirement("fps", format, InvalidFpsError(fpsRange.upper)) {
           fpsRange.lower >= it.minFps &&
-            fpsRange.upper <= it.maxFps
+              fpsRange.upper <= it.maxFps
         }
         analysis.setTargetFrameRate(fpsRange)
       }
@@ -196,23 +192,8 @@ internal fun CameraSession.configureOutputs(configuration: CameraConfiguration) 
         analysis.setResolutionSelector(resolutionSelector)
       }
     }.build()
-
-    val outputFile = File(context.cacheDir, "processed_video.mov")
-    outputFile.setReadable(true, false)
-    val width = format?.videoSize?.width ?: 1280
-    val height = format?.videoSize?.height ?: 640
-
-    if (outputOrientation == Orientation.PORTRAIT || outputOrientation == Orientation.PORTRAIT_UPSIDE_DOWN) {
-      videoEncoder = VideoEncoder(height, width, outputFile)
-      videoProcessor = VideoProcessor(height, width)
-    } else {
-      videoEncoder = VideoEncoder(width, height, outputFile)
-      videoProcessor = VideoProcessor(width, height)
-    }
-
-    isFrontFacing = camera?.cameraInfo?.lensFacing == CameraSelector.LENS_FACING_FRONT
-    frameProcessorPipeline = FrameProcessorPipeline(isFrontFacing, videoProcessor, videoEncoder)
-    analyzer.setAnalyzer(CameraQueues.videoQueue.executor, frameProcessorPipeline!!)
+    val pipeline = FrameProcessorPipeline(callback)
+    analyzer.setAnalyzer(CameraQueues.videoQueue.executor, pipeline)
     frameProcessorOutput = analyzer
   } else {
     frameProcessorOutput = null
@@ -302,12 +283,6 @@ internal suspend fun CameraSession.configureCamera(provider: ProcessCameraProvid
         callback.onStopped()
       }
       lastIsStreaming = isStreaming
-    }
-
-    val newIsFrontFacing = camera!!.cameraInfo.lensFacing == CameraSelector.LENS_FACING_FRONT
-    if (isFrontFacing != newIsFrontFacing) {
-      isFrontFacing = newIsFrontFacing
-      frameProcessorPipeline?.updateIsFrontFacing(isFrontFacing)
     }
 
     val error = state.error
