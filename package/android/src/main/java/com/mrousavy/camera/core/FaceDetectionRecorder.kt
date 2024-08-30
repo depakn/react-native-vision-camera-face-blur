@@ -58,10 +58,11 @@ class FaceDetectionRecorder(private val context: Context) {
 
   private lateinit var renderScript: RenderScript
   private lateinit var yuvToRgbScript: ScriptIntrinsicYuvToRGB
+  private var audioRecorder: AudioRecorder? = null
 
   private val lock = ReentrantLock()
 
-  fun startRecording(outputFile: File, size: Size) {
+  fun startRecording(outputFile: File, processedAudioFile: File, size: Size) {
     lock.withLock {
       if (state.get() != State.IDLE) {
         Log.w(TAG, "Cannot start recording. Current state: ${state.get()}")
@@ -88,6 +89,9 @@ class FaceDetectionRecorder(private val context: Context) {
 
         renderScript = RenderScript.create(context)
         yuvToRgbScript = ScriptIntrinsicYuvToRGB.create(renderScript, Element.U8_4(renderScript))
+
+        audioRecorder = AudioRecorder(processedAudioFile)
+        audioRecorder?.start()
 
         Log.i(TAG, "Recording started successfully")
       } catch (e: Exception) {
@@ -301,6 +305,7 @@ class FaceDetectionRecorder(private val context: Context) {
           drainEncoder(true)
           encoder?.stop()
           encoder?.release()
+          audioRecorder?.stop()
           muxer?.stop()
           muxer?.release()
           inputSurface?.release()
@@ -310,6 +315,7 @@ class FaceDetectionRecorder(private val context: Context) {
         } finally {
           encoder = null
           muxer = null
+          audioRecorder = null
           inputSurface = null
           state.set(State.STOPPED)
         }

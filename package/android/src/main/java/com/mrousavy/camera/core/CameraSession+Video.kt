@@ -33,7 +33,6 @@ fun CameraSession.startRecording(
     }
   }.build()
 
-  // TODO: Move this to JS so users can prepare recordings earlier
   // Prepare recording
   var pendingRecording = videoOutput.output.prepareRecording(context, outputOptions)
   if (enableAudio) {
@@ -42,21 +41,26 @@ fun CameraSession.startRecording(
   }
   pendingRecording = pendingRecording.asPersistentRecording()
 
-  val processedVideoFile = File(context.cacheDir, "processed_${System.currentTimeMillis()}.mp4")
+  val timestampMS = System.currentTimeMillis()
+  val processedVideoFile = File(context.cacheDir, "processed_video_${timestampMS}.mp4")
+  val processedAudioFile = File(context.cacheDir, "processed_audio_${timestampMS}.m4a")
+  val finalProcessedFile = File(context.cacheDir, "final_video_${timestampMS}.mp4")
 
   isRecordingCanceled = false
+  var hasReceivedFrames = false
   recording = pendingRecording.start(CameraQueues.cameraExecutor) { event ->
     when (event) {
       is VideoRecordEvent.Start -> {
         Log.i(CameraSession.TAG, "Recording started!")
+        hasReceivedFrames = false
 
         val width = configuration?.format?.videoWidth ?: 640
         val height = configuration?.format?.videoHeight ?: 1280
 
         if (outputOrientation == Orientation.PORTRAIT || outputOrientation == Orientation.PORTRAIT_UPSIDE_DOWN) {
-          faceDetectionRecorder.startRecording(processedVideoFile, Size(height, width))
+          faceDetectionRecorder.startRecording(processedVideoFile, processedAudioFile, Size(height, width))
         } else {
-          faceDetectionRecorder.startRecording(processedVideoFile, Size(width, height))
+          faceDetectionRecorder.startRecording(processedVideoFile, processedAudioFile, Size(width, height))
         }
       }
 
@@ -64,7 +68,12 @@ fun CameraSession.startRecording(
 
       is VideoRecordEvent.Pause -> Log.i(CameraSession.TAG, "Recording paused!")
 
-      is VideoRecordEvent.Status -> Log.i(CameraSession.TAG, "Status update! Recorded ${event.recordingStats.numBytesRecorded} bytes.")
+      is VideoRecordEvent.Status -> {
+        Log.i(CameraSession.TAG, "Status update! Recorded ${event.recordingStats.numBytesRecorded} bytes.")
+        if (event.recordingStats.numBytesRecorded > 0) {
+          hasReceivedFrames = true
+        }
+      }
 
       is VideoRecordEvent.Finalize -> {
         if (isRecordingCanceled) {
@@ -75,6 +84,9 @@ fun CameraSession.startRecording(
           } catch (e: Throwable) {
             this.callback.onError(FileIOError(e))
           }
+          return@start
+        } else if (!hasReceivedFrames) {
+          Log.e(CameraSession.TAG, "Recording stopped before receiving any frames.")
           return@start
         }
 
@@ -90,25 +102,53 @@ fun CameraSession.startRecording(
           }
         }
 
-        faceDetectionRecorder.stopRecording()
-
         // Prepare output result
         val durationMs = event.recordingStats.recordedDurationNanos / 1_000_000
         Log.i(CameraSession.TAG, "Successfully completed video recording! Captured ${durationMs.toDouble() / 1_000.0} seconds.")
         val processedVideoPath = processedVideoFile.absolutePath
+
+        // Merge Audio and Video
+        mergeAudioVideo(processedVideoFile, processedAudioFile, finalProcessedFile)
+
         val size = videoOutput.attachedSurfaceResolution ?: Size(0, 0)
-        val video = Video(processedVideoPath, durationMs, size)
+        val video = Video(finalProcessedFile.absolutePath, durationMs, size)
         callback(video)
+
+        processedVideoFile.delete();
+        processedAudioFile.delete();
       }
     }
+  }
+}
+
+private fun mergeAudioVideo(videoFile: File, audioFile: File, outputFile: File) {
+  try {
+    val command = arrayOf(
+      "-i", videoFile.absolutePath,
+      "-i", audioFile.absolutePath,
+      "-c:v", "copy",
+      "-c:a", "aac",
+      "-strict", "experimental",
+      outputFile.absolutePath
+    )
+
+    com.arthenica.mobileffmpeg.FFmpeg.execute(command)
+
+    Log.d("RnFaceBlurViewManager", "Audio and video merged successfully")
+  } catch (e: Exception) {
+    Log.e("RnFaceBlurViewManager", "Error merging audio and video: ${e.message}")
   }
 }
 
 fun CameraSession.stopRecording() {
   val recording = recording ?: throw NoRecordingInProgressError()
 
-  recording.stop()
-  this.recording = null
+  CameraQueues.cameraExecutor.execute {
+    faceDetectionRecorder.stopRecording()
+    Thread.sleep(500)
+    recording.stop()
+    this.recording = null
+  }
 }
 
 fun CameraSession.cancelRecording() {
