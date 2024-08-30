@@ -103,7 +103,7 @@ void stackBlur(int* pix, int w, int h, int radius) {
 }
 
 extern "C" JNIEXPORT void JNICALL
-Java_com_mrousavy_camera_core_VideoProcessor_nativeStackBlur(
+Java_com_mrousavy_camera_core_FaceDetectionRecorder_nativeStackBlur(
         JNIEnv* env,
 jobject /* this */,
 jintArray pixelsArray,

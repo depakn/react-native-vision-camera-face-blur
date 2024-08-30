@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.util.Log
 import android.util.Size
 import androidx.annotation.OptIn
+import androidx.camera.core.CameraSelector
 import androidx.camera.video.ExperimentalPersistentRecording
 import androidx.camera.video.FileOutputOptions
 import androidx.camera.video.VideoRecordEvent
@@ -57,10 +58,12 @@ fun CameraSession.startRecording(
         val width = configuration?.format?.videoWidth ?: 640
         val height = configuration?.format?.videoHeight ?: 1280
 
+        val isFrontCamera = camera?.cameraInfo?.lensFacing == CameraSelector.LENS_FACING_FRONT
+
         if (outputOrientation == Orientation.PORTRAIT || outputOrientation == Orientation.PORTRAIT_UPSIDE_DOWN) {
-          faceDetectionRecorder.startRecording(processedVideoFile, processedAudioFile, Size(height, width))
+          faceDetectionRecorder.startRecording(processedVideoFile, processedAudioFile, Size(height, width), isFrontCamera)
         } else {
-          faceDetectionRecorder.startRecording(processedVideoFile, processedAudioFile, Size(width, height))
+          faceDetectionRecorder.startRecording(processedVideoFile, processedAudioFile, Size(width, height), isFrontCamera)
         }
       }
 

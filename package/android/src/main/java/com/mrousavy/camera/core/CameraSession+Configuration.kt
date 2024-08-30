@@ -131,7 +131,7 @@ internal fun CameraSession.configureOutputs(configuration: CameraConfiguration) 
     val video = VideoCapture.Builder(recorder).also { video ->
       // Configure Video Output
       if (videoConfig.config.isMirrored) {
-        video.setMirrorMode(MirrorMode.MIRROR_MODE_ON)
+        video.setMirrorMode(MirrorMode.MIRROR_MODE_OFF)
       } else {
         video.setMirrorMode(MirrorMode.MIRROR_MODE_OFF)
       }

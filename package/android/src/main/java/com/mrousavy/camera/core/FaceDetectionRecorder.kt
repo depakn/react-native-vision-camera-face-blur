@@ -59,11 +59,19 @@ class FaceDetectionRecorder(private val context: Context) {
   private lateinit var renderScript: RenderScript
   private lateinit var yuvToRgbScript: ScriptIntrinsicYuvToRGB
   private var audioRecorder: AudioRecorder? = null
+  private var isFrontCamera: Boolean = false
 
   private val lock = ReentrantLock()
 
-  fun startRecording(outputFile: File, processedAudioFile: File, size: Size) {
+  init {
+    System.loadLibrary("VisionCamera")
+  }
+
+  private external fun nativeStackBlur(pix: IntArray, w: Int, h: Int, radius: Int)
+
+  fun startRecording(outputFile: File, processedAudioFile: File, size: Size, isFrontCamera: Boolean) {
     lock.withLock {
+      this.isFrontCamera = isFrontCamera
       if (state.get() != State.IDLE) {
         Log.w(TAG, "Cannot start recording. Current state: ${state.get()}")
         return
@@ -207,19 +215,20 @@ class FaceDetectionRecorder(private val context: Context) {
         canvas.translate(translateX, translateY)
         canvas.scale(scale, scale)
 
+        if (isFrontCamera) {
+          canvas.scale(-1f, 1f)
+          canvas.translate(-bitmap.width.toFloat(), 0f)
+        }
+
         // Draw the bitmap
         canvas.drawBitmap(bitmap, 0f, 0f, null)
 
-        // Draw face bounding boxes
-        val paint = Paint().apply {
-          color = Color.BLACK
-          style = Paint.Style.FILL_AND_STROKE
-          strokeWidth = 5f / scale
-        }
-
+        // Blur face regions
         faces.forEach { face ->
           val rect = face.boundingBox
-          canvas.drawRect(rect, paint)
+          val blurredRegion = blurBitmapRegion(bitmap, rect)
+          canvas.drawBitmap(blurredRegion, rect.left.toFloat(), rect.top.toFloat(), null)
+          blurredRegion.recycle()
         }
 
         surface.unlockCanvasAndPost(canvas)
@@ -227,6 +236,19 @@ class FaceDetectionRecorder(private val context: Context) {
     } catch (ex: Exception) {
       Log.e(TAG, "Error in drawFacesAndBitmapToSurface", ex)
     }
+  }
+
+  private fun blurBitmapRegion(source: Bitmap, region: Rect): Bitmap {
+    val blurRadius = 70 // You can adjust this value
+    val blurredBitmap = Bitmap.createBitmap(region.width(), region.height(), Bitmap.Config.ARGB_8888)
+    
+    val pixels = IntArray(region.width() * region.height())
+    source.getPixels(pixels, 0, region.width(), region.left, region.top, region.width(), region.height())
+    
+    nativeStackBlur(pixels, region.width(), region.height(), blurRadius)
+    
+    blurredBitmap.setPixels(pixels, 0, region.width(), 0, 0, region.width(), region.height())
+    return blurredBitmap
   }
 
   private fun rotateBitmap(source: Bitmap, angle: Int): Bitmap {
