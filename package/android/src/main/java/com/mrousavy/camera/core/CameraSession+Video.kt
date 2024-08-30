@@ -53,17 +53,20 @@ fun CameraSession.startRecording(
     when (event) {
       is VideoRecordEvent.Start -> {
         Log.i(CameraSession.TAG, "Recording started!")
-        hasReceivedFrames = false
 
-        val width = configuration?.format?.videoWidth ?: 640
-        val height = configuration?.format?.videoHeight ?: 1280
+        if (configuration?.shouldBlurFace == true) {
+          hasReceivedFrames = false
 
-        val isFrontCamera = camera?.cameraInfo?.lensFacing == CameraSelector.LENS_FACING_FRONT
+          val width = configuration?.format?.videoWidth ?: 640
+          val height = configuration?.format?.videoHeight ?: 1280
 
-        if (outputOrientation == Orientation.PORTRAIT || outputOrientation == Orientation.PORTRAIT_UPSIDE_DOWN) {
-          faceDetectionRecorder.startRecording(processedVideoFile, processedAudioFile, Size(height, width), isFrontCamera)
-        } else {
-          faceDetectionRecorder.startRecording(processedVideoFile, processedAudioFile, Size(width, height), isFrontCamera)
+          val isFrontCamera = camera?.cameraInfo?.lensFacing == CameraSelector.LENS_FACING_FRONT
+
+          if (outputOrientation == Orientation.PORTRAIT || outputOrientation == Orientation.PORTRAIT_UPSIDE_DOWN) {
+            faceDetectionRecorder.startRecording(processedVideoFile, processedAudioFile, Size(height, width), isFrontCamera)
+          } else {
+            faceDetectionRecorder.startRecording(processedVideoFile, processedAudioFile, Size(width, height), isFrontCamera)
+          }
         }
       }
 
@@ -88,9 +91,13 @@ fun CameraSession.startRecording(
             this.callback.onError(FileIOError(e))
           }
           return@start
-        } else if (!hasReceivedFrames) {
-          Log.e(CameraSession.TAG, "Recording stopped before receiving any frames.")
-          return@start
+        }
+
+        if (configuration?.shouldBlurFace == true) {
+          if (!hasReceivedFrames) {
+            Log.e(CameraSession.TAG, "Recording stopped before receiving any frames.")
+            return@start
+          }
         }
 
         Log.i(CameraSession.TAG, "Recording stopped!")
@@ -108,17 +115,23 @@ fun CameraSession.startRecording(
         // Prepare output result
         val durationMs = event.recordingStats.recordedDurationNanos / 1_000_000
         Log.i(CameraSession.TAG, "Successfully completed video recording! Captured ${durationMs.toDouble() / 1_000.0} seconds.")
-        val processedVideoPath = processedVideoFile.absolutePath
 
-        // Merge Audio and Video
-        mergeAudioVideo(processedVideoFile, processedAudioFile, finalProcessedFile)
+        if (configuration?.shouldBlurFace == true) {
+          // Merge Audio and Video
+          mergeAudioVideo(processedVideoFile, processedAudioFile, finalProcessedFile)
 
-        val size = videoOutput.attachedSurfaceResolution ?: Size(0, 0)
-        val video = Video(finalProcessedFile.absolutePath, durationMs, size)
-        callback(video)
+          val size = videoOutput.attachedSurfaceResolution ?: Size(0, 0)
+          val video = Video(finalProcessedFile.absolutePath, durationMs, size)
+          callback(video)
 
-        processedVideoFile.delete();
-        processedAudioFile.delete();
+          processedVideoFile.delete();
+          processedAudioFile.delete();
+        } else {
+          val path = event.outputResults.outputUri.path ?: throw UnknownRecorderError(false, null)
+          val size = videoOutput.attachedSurfaceResolution ?: Size(0, 0)
+          val video = Video(path, durationMs, size)
+          callback(video)
+        }
       }
     }
   }
@@ -147,7 +160,9 @@ fun CameraSession.stopRecording() {
   val recording = recording ?: throw NoRecordingInProgressError()
 
   CameraQueues.cameraExecutor.execute {
-    faceDetectionRecorder.stopRecording()
+    if (configuration?.shouldBlurFace == true) {
+      faceDetectionRecorder.stopRecording()
+    }
     Thread.sleep(500)
     recording.stop()
     this.recording = null

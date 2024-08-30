@@ -51,23 +51,26 @@ class FaceDetectionRecorder(private val context: Context) {
     .setMinFaceSize(0.15f)
     .build()
   private val faceDetector = FaceDetection.getClient(options)
-  private val processingExecutor: Executor = Executors.newSingleThreadExecutor()
+  private val processingExecutor: Executor = Executors.newFixedThreadPool(3)
 
   private var frameSize: Size = Size(1, 1)
   private val state = AtomicReference(State.IDLE)
 
-  private lateinit var renderScript: RenderScript
-  private lateinit var yuvToRgbScript: ScriptIntrinsicYuvToRGB
   private var audioRecorder: AudioRecorder? = null
   private var isFrontCamera: Boolean = false
 
   private val lock = ReentrantLock()
 
+  private var lastProcessedFrameTime = 0L
+  private val PROCESS_INTERVAL_MS = 100 // Process every 100ms
+
   init {
     System.loadLibrary("VisionCamera")
   }
 
-  private external fun nativeStackBlur(pix: IntArray, w: Int, h: Int, radius: Int)
+  private external fun nativeYUV420toARGB8888(yuv: ByteArray, width: Int, height: Int, out: IntArray)
+
+//  private external fun nativeStackBlur(pix: IntArray, w: Int, h: Int, radius: Int)
 
   fun startRecording(outputFile: File, processedAudioFile: File, size: Size, isFrontCamera: Boolean) {
     lock.withLock {
@@ -95,9 +98,6 @@ class FaceDetectionRecorder(private val context: Context) {
 
         muxer = MediaMuxer(outputFile.absolutePath, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4)
 
-        renderScript = RenderScript.create(context)
-        yuvToRgbScript = ScriptIntrinsicYuvToRGB.create(renderScript, Element.U8_4(renderScript))
-
         audioRecorder = AudioRecorder(processedAudioFile)
         audioRecorder?.start()
 
@@ -110,9 +110,10 @@ class FaceDetectionRecorder(private val context: Context) {
   }
 
   fun processFrame(frame: Frame, rotationDegrees: Int) {
-    if (state.get() != State.STARTED) {
-      return
-    }
+    if (state.get() != State.STARTED) return
+
+    val currentTime = System.currentTimeMillis()
+    if (currentTime - lastProcessedFrameTime < PROCESS_INTERVAL_MS) return
 
     frame.incrementRefCount()
     processingExecutor.execute {
@@ -139,9 +140,7 @@ class FaceDetectionRecorder(private val context: Context) {
                   }
                 }
               }
-              .addOnFailureListener { e ->
-                Log.e(TAG, "Face detection failed", e)
-              }
+              .addOnFailureListener { e -> Log.e(TAG, "Face detection failed", e) }
               .addOnCompleteListener {
                 bitmap.recycle()
                 frame.decrementRefCount()
@@ -155,24 +154,14 @@ class FaceDetectionRecorder(private val context: Context) {
         frame.decrementRefCount()
       }
     }
+    lastProcessedFrameTime = currentTime
   }
 
   private fun imageToBitmap(image: Image): Bitmap {
     val yuvBytes = imageToByteArray(image)
-    val inputAllocation = Allocation.createSized(renderScript, Element.U8(renderScript), yuvBytes.size)
-    inputAllocation.copyFrom(yuvBytes)
-
-    val outputBitmap = Bitmap.createBitmap(image.width, image.height, Bitmap.Config.ARGB_8888)
-    val outputAllocation = Allocation.createFromBitmap(renderScript, outputBitmap)
-
-    yuvToRgbScript.setInput(inputAllocation)
-    yuvToRgbScript.forEach(outputAllocation)
-    outputAllocation.copyTo(outputBitmap)
-
-    inputAllocation.destroy()
-    outputAllocation.destroy()
-
-    return outputBitmap
+    val argbArray = IntArray(image.width * image.height)
+    nativeYUV420toARGB8888(yuvBytes, image.width, image.height, argbArray)
+    return Bitmap.createBitmap(argbArray, image.width, image.height, Bitmap.Config.ARGB_8888)
   }
 
   private fun imageToByteArray(image: Image): ByteArray {
@@ -223,12 +212,19 @@ class FaceDetectionRecorder(private val context: Context) {
         // Draw the bitmap
         canvas.drawBitmap(bitmap, 0f, 0f, null)
 
+        val paint = Paint().apply {
+          color = Color.BLACK
+          style = Paint.Style.FILL_AND_STROKE
+          strokeWidth = 5f / scale
+        }
+
         // Blur face regions
         faces.forEach { face ->
           val rect = face.boundingBox
-          val blurredRegion = blurBitmapRegion(bitmap, rect)
-          canvas.drawBitmap(blurredRegion, rect.left.toFloat(), rect.top.toFloat(), null)
-          blurredRegion.recycle()
+//          val blurredRegion = blurBitmapRegion(bitmap, rect)
+//          canvas.drawBitmap(blurredRegion, rect.left.toFloat(), rect.top.toFloat(), null)
+//          blurredRegion.recycle()
+          canvas.drawRect(rect, paint)
         }
 
         surface.unlockCanvasAndPost(canvas)
@@ -238,18 +234,13 @@ class FaceDetectionRecorder(private val context: Context) {
     }
   }
 
-  private fun blurBitmapRegion(source: Bitmap, region: Rect): Bitmap {
-    val blurRadius = 70 // You can adjust this value
-    val blurredBitmap = Bitmap.createBitmap(region.width(), region.height(), Bitmap.Config.ARGB_8888)
-    
-    val pixels = IntArray(region.width() * region.height())
-    source.getPixels(pixels, 0, region.width(), region.left, region.top, region.width(), region.height())
-    
-    nativeStackBlur(pixels, region.width(), region.height(), blurRadius)
-    
-    blurredBitmap.setPixels(pixels, 0, region.width(), 0, 0, region.width(), region.height())
-    return blurredBitmap
-  }
+//  private fun blurBitmapRegion(source: Bitmap, region: Rect): Bitmap {
+//    val blurRadius = 35 // Reduced from 70
+//    val pixels = IntArray(region.width() * region.height())
+//    source.getPixels(pixels, 0, region.width(), region.left, region.top, region.width(), region.height())
+//    nativeStackBlur(pixels, region.width(), region.height(), blurRadius)
+//    return Bitmap.createBitmap(pixels, region.width(), region.height(), Bitmap.Config.ARGB_8888)
+//  }
 
   private fun rotateBitmap(source: Bitmap, angle: Int): Bitmap {
     val matrix = Matrix()
@@ -331,7 +322,6 @@ class FaceDetectionRecorder(private val context: Context) {
           muxer?.stop()
           muxer?.release()
           inputSurface?.release()
-          renderScript.destroy()
         } catch (e: Exception) {
           Log.e(TAG, "Error stopping recording", e)
         } finally {

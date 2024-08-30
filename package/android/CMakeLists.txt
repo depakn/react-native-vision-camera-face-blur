@@ -41,6 +41,7 @@ add_library(
         src/main/cpp/frameprocessors/java-bindings/JVisionCameraProxy.cpp
         src/main/cpp/frameprocessors/java-bindings/JVisionCameraScheduler.cpp
         src/main/cpp/blur.cpp
+        src/main/cpp/yuv_to_rgb.cpp
 )
 
 # Header Search Paths (includes)
