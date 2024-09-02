@@ -213,7 +213,7 @@ class FaceDetectionRecorder(private val context: Context) {
         canvas.drawBitmap(bitmap, 0f, 0f, null)
 
         val paint = Paint().apply {
-          color = Color.BLACK
+          color = Color.WHITE
           style = Paint.Style.FILL_AND_STROKE
           strokeWidth = 5f / scale
         }
