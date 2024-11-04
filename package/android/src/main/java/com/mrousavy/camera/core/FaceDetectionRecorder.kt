@@ -2,7 +2,6 @@ package com.mrousavy.camera.core
 
 import android.content.Context
 import android.graphics.Bitmap
-import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Matrix
 import android.graphics.Paint
@@ -13,10 +12,6 @@ import android.media.MediaCodec
 import android.media.MediaCodecInfo
 import android.media.MediaFormat
 import android.media.MediaMuxer
-import android.renderscript.Allocation
-import android.renderscript.Element
-import android.renderscript.RenderScript
-import android.renderscript.ScriptIntrinsicYuvToRGB
 import android.util.Log
 import android.util.Size
 import android.view.Surface
@@ -34,7 +29,10 @@ import kotlin.concurrent.withLock
 
 class FaceDetectionRecorder(private val context: Context) {
   private enum class State {
-    IDLE, STARTED, STOPPING, STOPPED
+    IDLE,
+    STARTED,
+    STOPPING,
+    STOPPED
   }
 
   private var encoder: MediaCodec? = null
@@ -70,7 +68,7 @@ class FaceDetectionRecorder(private val context: Context) {
 
   private external fun nativeYUV420toARGB8888(yuv: ByteArray, width: Int, height: Int, out: IntArray)
 
-//  private external fun nativeStackBlur(pix: IntArray, w: Int, h: Int, radius: Int)
+  private external fun nativeStackBlur(pix: IntArray, w: Int, h: Int, radius: Int)
 
   fun startRecording(outputFile: File, processedAudioFile: File, size: Size, isFrontCamera: Boolean) {
     lock.withLock {
@@ -221,10 +219,10 @@ class FaceDetectionRecorder(private val context: Context) {
         // Blur face regions
         faces.forEach { face ->
           val rect = face.boundingBox
-//          val blurredRegion = blurBitmapRegion(bitmap, rect)
-//          canvas.drawBitmap(blurredRegion, rect.left.toFloat(), rect.top.toFloat(), null)
-//          blurredRegion.recycle()
-          canvas.drawRect(rect, paint)
+          val blurredRegion = blurBitmapRegion(bitmap, rect)
+          canvas.drawBitmap(blurredRegion, rect.left.toFloat(), rect.top.toFloat(), null)
+          blurredRegion.recycle()
+//          canvas.drawRect(rect, paint)
         }
 
         surface.unlockCanvasAndPost(canvas)
@@ -234,13 +232,25 @@ class FaceDetectionRecorder(private val context: Context) {
     }
   }
 
-//  private fun blurBitmapRegion(source: Bitmap, region: Rect): Bitmap {
-//    val blurRadius = 35 // Reduced from 70
-//    val pixels = IntArray(region.width() * region.height())
-//    source.getPixels(pixels, 0, region.width(), region.left, region.top, region.width(), region.height())
-//    nativeStackBlur(pixels, region.width(), region.height(), blurRadius)
-//    return Bitmap.createBitmap(pixels, region.width(), region.height(), Bitmap.Config.ARGB_8888)
-//  }
+  private fun blurBitmapRegion(source: Bitmap, region: Rect): Bitmap {
+    // Downscale region
+    val downscaleFactor = 0.5
+    val downscaledWidth = (region.width() * downscaleFactor).toInt()
+    val downscaledHeight = (region.height() * downscaleFactor).toInt()
+
+    val scaledRegion = Bitmap.createScaledBitmap(
+      source, downscaledWidth, downscaledHeight, true
+    )
+
+    // Apply blur to the downscaled region
+    val pixels = IntArray(scaledRegion.width * scaledRegion.height)
+    scaledRegion.getPixels(pixels, 0, scaledRegion.width, 0, 0, scaledRegion.width, scaledRegion.height)
+    nativeStackBlur(pixels, scaledRegion.width, scaledRegion.height, 20)
+
+    // Scale it back to original size
+    val blurredBitmap = Bitmap.createBitmap(pixels, scaledRegion.width, scaledRegion.height, Bitmap.Config.ARGB_8888)
+    return Bitmap.createScaledBitmap(blurredBitmap, region.width(), region.height(), true)
+  }
 
   private fun rotateBitmap(source: Bitmap, angle: Int): Bitmap {
     val matrix = Matrix()

@@ -144,7 +144,7 @@ internal fun CameraSession.configureOutputs(configuration: CameraConfiguration) 
       if (fpsRange != null) {
         assertFormatRequirement("fps", format, InvalidFpsError(fpsRange.upper)) {
           fpsRange.lower >= it.minFps &&
-              fpsRange.upper <= it.maxFps
+            fpsRange.upper <= it.maxFps
         }
         video.setTargetFrameRate(fpsRange)
       }
@@ -179,7 +179,7 @@ internal fun CameraSession.configureOutputs(configuration: CameraConfiguration) 
       if (fpsRange != null) {
         assertFormatRequirement("fps", format, InvalidFpsError(fpsRange.upper)) {
           fpsRange.lower >= it.minFps &&
-              fpsRange.upper <= it.maxFps
+            fpsRange.upper <= it.maxFps
         }
         analysis.setTargetFrameRate(fpsRange)
       }
