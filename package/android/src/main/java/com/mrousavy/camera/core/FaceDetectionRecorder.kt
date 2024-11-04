@@ -2,6 +2,7 @@ package com.mrousavy.camera.core
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Matrix
 import android.graphics.Paint
@@ -12,6 +13,7 @@ import android.media.MediaCodec
 import android.media.MediaCodecInfo
 import android.media.MediaFormat
 import android.media.MediaMuxer
+import android.os.Build
 import android.util.Log
 import android.util.Size
 import android.view.Surface
@@ -35,6 +37,9 @@ class FaceDetectionRecorder(private val context: Context) {
     STOPPED
   }
 
+  // Scaling down factor for frames before processing for face detection
+  private val DOWNSCALE_FACTOR = 0.5
+
   private var encoder: MediaCodec? = null
   private var muxer: MediaMuxer? = null
   private var inputSurface: Surface? = null
@@ -49,25 +54,24 @@ class FaceDetectionRecorder(private val context: Context) {
     .setMinFaceSize(0.15f)
     .build()
   private val faceDetector = FaceDetection.getClient(options)
-  private val processingExecutor: Executor = Executors.newFixedThreadPool(3)
+
+  // Executor with a single thread to control load on low-end devices
+  private val processingExecutor: Executor = Executors.newSingleThreadExecutor()
 
   private var frameSize: Size = Size(1, 1)
   private val state = AtomicReference(State.IDLE)
-
   private var audioRecorder: AudioRecorder? = null
   private var isFrontCamera: Boolean = false
 
   private val lock = ReentrantLock()
-
   private var lastProcessedFrameTime = 0L
-  private val PROCESS_INTERVAL_MS = 100 // Process every 100ms
+  private val PROCESS_INTERVAL_MS = 200 // Increased to process every 200ms
 
   init {
     System.loadLibrary("VisionCamera")
   }
 
   private external fun nativeYUV420toARGB8888(yuv: ByteArray, width: Int, height: Int, out: IntArray)
-
   private external fun nativeStackBlur(pix: IntArray, w: Int, h: Int, radius: Int)
 
   fun startRecording(outputFile: File, processedAudioFile: File, size: Size, isFrontCamera: Boolean) {
@@ -124,14 +128,14 @@ class FaceDetectionRecorder(private val context: Context) {
 
           val image = frame.image
           if (image != null) {
-            val bitmap = imageToBitmap(image)
-            val inputImage = InputImage.fromMediaImage(image, rotationDegrees)
+            val downscaledBitmap = imageToBitmap(image).let { downscaleBitmap(it, DOWNSCALE_FACTOR) }
+            val inputImage = InputImage.fromBitmap(downscaledBitmap, rotationDegrees)
 
             faceDetector.process(inputImage)
               .addOnSuccessListener { faces ->
                 lock.withLock {
                   if (state.get() == State.STARTED) {
-                    val rotatedBitmap = rotateBitmap(bitmap, rotationDegrees)
+                    val rotatedBitmap = rotateBitmap(downscaledBitmap, rotationDegrees)
                     drawFacesAndBitmapToSurface(rotatedBitmap, faces, rotationDegrees)
                     drainEncoder(false)
                     rotatedBitmap.recycle()
@@ -140,7 +144,7 @@ class FaceDetectionRecorder(private val context: Context) {
               }
               .addOnFailureListener { e -> Log.e(TAG, "Face detection failed", e) }
               .addOnCompleteListener {
-                bitmap.recycle()
+                downscaledBitmap.recycle()
                 frame.decrementRefCount()
               }
           } else {
@@ -180,76 +184,79 @@ class FaceDetectionRecorder(private val context: Context) {
     return nv21
   }
 
+  private fun downscaleBitmap(bitmap: Bitmap, factor: Double): Bitmap {
+    val width = (bitmap.width * factor).toInt()
+    val height = (bitmap.height * factor).toInt()
+    return Bitmap.createScaledBitmap(bitmap, width, height, true)
+  }
+
+  private fun calculateScaleAndDrawBitmap(canvas: Canvas, bitmap: Bitmap): Float {
+    // Calculate scaling factors to fit the bitmap within the canvas
+    val scaleX = frameSize.width.toFloat() / bitmap.width
+    val scaleY = frameSize.height.toFloat() / bitmap.height
+    val scale = minOf(scaleX, scaleY)
+
+    // Calculate translation to center the bitmap on the canvas
+    val translateX = (frameSize.width - bitmap.width * scale) / 2f
+    val translateY = (frameSize.height - bitmap.height * scale) / 2f
+
+    // Apply transformations to the canvas
+    canvas.translate(translateX, translateY)
+    canvas.scale(scale, scale)
+
+    // If using the front camera, mirror the image horizontally
+    if (isFrontCamera) {
+      canvas.scale(-1f, 1f)
+      canvas.translate(-bitmap.width.toFloat(), 0f)
+    }
+
+    // Draw the bitmap onto the transformed canvas
+    canvas.drawBitmap(bitmap, 0f, 0f, null)
+
+    return scale
+  }
+
   private fun drawFacesAndBitmapToSurface(bitmap: Bitmap, faces: List<Face>, rotationDegrees: Int) {
-    try {
-      inputSurface?.let { surface ->
-        val canvas = surface.lockCanvas(null)
+    inputSurface?.let { surface ->
+      val canvas = surface.lockCanvas(null)
+      canvas.drawColor(Color.BLACK)
+      // Scale and draw bitmap
+      val scale = calculateScaleAndDrawBitmap(canvas, bitmap)
 
-        // Clear the canvas with a black background
-        canvas.drawColor(Color.BLACK)
-
-        Log.d("FaceDetectionRecorder", "Scale Factors: ${frameSize.width} - ${bitmap.width}")
-        // Calculate scaling factors
-        val scaleX = frameSize.width.toFloat() / bitmap.width
-        val scaleY = frameSize.height.toFloat() / bitmap.height
-        val scale = minOf(scaleX, scaleY)
-
-        // Calculate translation to center the bitmap
-        val translateX = (frameSize.width - bitmap.width * scale) / 2f
-        val translateY = (frameSize.height - bitmap.height * scale) / 2f
-
-        // Apply transformations
-        canvas.translate(translateX, translateY)
-        canvas.scale(scale, scale)
-
-        if (isFrontCamera) {
-          canvas.scale(-1f, 1f)
-          canvas.translate(-bitmap.width.toFloat(), 0f)
-        }
-
-        // Draw the bitmap
-        canvas.drawBitmap(bitmap, 0f, 0f, null)
-
-        val paint = Paint().apply {
-          color = Color.rgb(255, 224, 196)
-          style = Paint.Style.FILL_AND_STROKE
-          strokeWidth = 5f / scale
-        }
-
-        // Blur face regions
-        faces.forEach { face ->
-          val rect = face.boundingBox
-          val blurredRegion = blurBitmapRegion(bitmap, rect)
-          canvas.drawBitmap(blurredRegion, rect.left.toFloat(), rect.top.toFloat(), null)
-          blurredRegion.recycle()
-//          canvas.drawRect(rect, paint)
-        }
-
-        surface.unlockCanvasAndPost(canvas)
+      val paint = Paint().apply {
+        color = Color.rgb(255, 224, 196)
+        style = Paint.Style.FILL
       }
-    } catch (ex: Exception) {
-      Log.e(TAG, "Error in drawFacesAndBitmapToSurface", ex)
+
+      // Draw and blur faces
+      faces.forEach { face ->
+        val rect = face.boundingBox
+        val blurredRegion = blurBitmapRegion(bitmap, rect, scale)
+        canvas.drawBitmap(blurredRegion, rect.left.toFloat(), rect.top.toFloat(), null)
+        blurredRegion.recycle()
+      }
+      surface.unlockCanvasAndPost(canvas)
     }
   }
 
-  private fun blurBitmapRegion(source: Bitmap, region: Rect): Bitmap {
-    // Downscale region
-    val downscaleFactor = 0.5
+  private fun blurBitmapRegion(source: Bitmap, region: Rect, scale: Float): Bitmap {
+    // Downscale and apply reduced blur radius
+    val downscaleFactor = 0.3
     val downscaledWidth = (region.width() * downscaleFactor).toInt()
     val downscaledHeight = (region.height() * downscaleFactor).toInt()
+    val scaledRegion = Bitmap.createScaledBitmap(source, downscaledWidth, downscaledHeight, true)
 
-    val scaledRegion = Bitmap.createScaledBitmap(
-      source, downscaledWidth, downscaledHeight, true
-    )
-
-    // Apply blur to the downscaled region
+    // Use smaller radius for lower-end devices
+    val blurRadius = if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) 10 else 20
     val pixels = IntArray(scaledRegion.width * scaledRegion.height)
     scaledRegion.getPixels(pixels, 0, scaledRegion.width, 0, 0, scaledRegion.width, scaledRegion.height)
-    nativeStackBlur(pixels, scaledRegion.width, scaledRegion.height, 20)
+    nativeStackBlur(pixels, scaledRegion.width, scaledRegion.height, blurRadius)
 
-    // Scale it back to original size
-    val blurredBitmap = Bitmap.createBitmap(pixels, scaledRegion.width, scaledRegion.height, Bitmap.Config.ARGB_8888)
-    return Bitmap.createScaledBitmap(blurredBitmap, region.width(), region.height(), true)
+    // Scale back to original region size
+    return Bitmap.createScaledBitmap(
+      Bitmap.createBitmap(pixels, scaledRegion.width, scaledRegion.height, Bitmap.Config.ARGB_8888),
+      region.width(), region.height(), true
+    )
   }
 
   private fun rotateBitmap(source: Bitmap, angle: Int): Bitmap {
