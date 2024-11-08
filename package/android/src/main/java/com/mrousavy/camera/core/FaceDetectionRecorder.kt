@@ -13,7 +13,6 @@ import android.media.MediaCodec
 import android.media.MediaCodecInfo
 import android.media.MediaFormat
 import android.media.MediaMuxer
-import android.os.Build
 import android.util.Log
 import android.util.Size
 import android.view.Surface
@@ -255,7 +254,9 @@ class FaceDetectionRecorder(private val context: Context) {
     // Scale back to original region size
     return Bitmap.createScaledBitmap(
       Bitmap.createBitmap(pixels, scaledRegion.width, scaledRegion.height, Bitmap.Config.ARGB_8888),
-      region.width(), region.height(), true
+      region.width(),
+      region.height(),
+      true
     )
   }
 

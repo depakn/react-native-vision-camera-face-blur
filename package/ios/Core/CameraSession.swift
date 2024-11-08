@@ -12,6 +12,8 @@ import os.log
 import UIKit
 import Vision
 
+// MARK: - CameraSession
+
 /// A fully-featured Camera Session supporting preview, video, photo, frame processing, and code scanning outputs.
 /// All changes to the session have to be controlled via the `configure` function.
 final class CameraSession: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate,
@@ -68,17 +70,20 @@ final class CameraSession: NSObject, AVCaptureVideoDataOutputSampleBufferDelegat
       self,
       selector: #selector(sessionRuntimeError),
       name: .AVCaptureSessionRuntimeError,
-      object: captureSession)
+      object: captureSession
+    )
     NotificationCenter.default.addObserver(
       self,
       selector: #selector(sessionRuntimeError),
       name: .AVCaptureSessionRuntimeError,
-      object: audioCaptureSession)
+      object: audioCaptureSession
+    )
     NotificationCenter.default.addObserver(
       self,
       selector: #selector(audioSessionInterrupted),
       name: AVAudioSession.interruptionNotification,
-      object: AVAudioSession.sharedInstance)
+      object: AVAudioSession.sharedInstance
+    )
   }
 
   private func initialize() {
@@ -93,15 +98,18 @@ final class CameraSession: NSObject, AVCaptureVideoDataOutputSampleBufferDelegat
     NotificationCenter.default.removeObserver(
       self,
       name: .AVCaptureSessionRuntimeError,
-      object: captureSession)
+      object: captureSession
+    )
     NotificationCenter.default.removeObserver(
       self,
       name: .AVCaptureSessionRuntimeError,
-      object: audioCaptureSession)
+      object: audioCaptureSession
+    )
     NotificationCenter.default.removeObserver(
       self,
       name: AVAudioSession.interruptionNotification,
-      object: AVAudioSession.sharedInstance)
+      object: AVAudioSession.sharedInstance
+    )
   }
 
   /**
@@ -150,7 +158,8 @@ final class CameraSession: NSObject, AVCaptureVideoDataOutputSampleBufferDelegat
 
       VisionLogger.log(
         level: .info,
-        message: "configure { ... }: Updating CameraSession Configuration... \(difference)")
+        message: "configure { ... }: Updating CameraSession Configuration... \(difference)"
+      )
 
       do {
         // If needed, configure the AVCaptureSession (inputs, outputs)
@@ -294,7 +303,8 @@ final class CameraSession: NSObject, AVCaptureVideoDataOutputSampleBufferDelegat
     case is AVCaptureVideoDataOutput:
       onVideoFrame(
         sampleBuffer: sampleBuffer, orientation: connection.orientation,
-        isMirrored: connection.isVideoMirrored)
+        isMirrored: connection.isVideoMirrored
+      )
     case is AVCaptureAudioDataOutput:
       onAudioFrame(sampleBuffer: sampleBuffer)
     default:
@@ -305,92 +315,97 @@ final class CameraSession: NSObject, AVCaptureVideoDataOutputSampleBufferDelegat
   private final func onVideoFrame(
     sampleBuffer: CMSampleBuffer, orientation: Orientation, isMirrored: Bool
   ) {
-      let sbf = configuration?.shouldBlurFace == true
-      if sbf {
-          guard let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else {
-            os_log("Failed to get pixel buffer from sample buffer", log: logger, type: .error)
-            return
-          }
-
-          var ciImage = CIImage(cvPixelBuffer: pixelBuffer)
-
-          // Apply orientation correction
-          ciImage = ciImage.oriented(orientation.cgImagePropertyOrientation)
-
-          // Detect faces
-          let faceDetectionRequest = VNDetectFaceLandmarksRequest()
-          do {
-            try faceDetector.perform([faceDetectionRequest], on: ciImage, orientation: .up)
-          } catch {
-            os_log(
-              "Face detection failed: %{public}@", log: logger, type: .error, error.localizedDescription)
-          }
-
-          let faces = faceDetectionRequest.results as? [VNFaceObservation] ?? []
-          os_log("Detected %d faces", log: logger, type: .debug, faces.count)
-
-          // Blur detected faces
-          let blurredImage = applyFaceBlur(to: ciImage, faces: faces)
-
-          if isDebugMode {
-            frameCount += 1
-            if frameCount % 60 == 0 {  // Save every 60th frame
-              saveImageForDebug(ciImage: blurredImage, prefix: "blurred", orientation: orientation)
-              saveImageForDebug(ciImage: ciImage, prefix: "original", orientation: orientation)
-
-              // Log face detection details
-              for (index, face) in faces.enumerated() {
-                let faceBounds = face.boundingBox
-                os_log(
-                  "Face %d detected at normalized rect: {{%f, %f}, {%f, %f}}", log: logger, type: .debug,
-                  index, faceBounds.origin.x, faceBounds.origin.y, faceBounds.size.width,
-                  faceBounds.size.height)
-              }
-            }
-          }
-
-          // Convert back to CMSampleBuffer
-          guard
-            let blurredBuffer = blurredImage.toCMSampleBuffer(
-              from: sampleBuffer, ciContext: self.ciContext)
-          else {
-            os_log("Failed to convert blurred image to sample buffer", log: logger, type: .error)
-            return
-          }
-
-          if let recordingSession {
-            do {
-              // Write the blurred Video Buffer to the RecordingSession
-              try recordingSession.append(buffer: blurredBuffer, ofType: .video)
-            } catch {
-              os_log(
-                "Recording failed: %{public}@", log: logger, type: .error, error.localizedDescription)
-              delegate?.onError(.capture(.unknown(message: error.localizedDescription)))
-            }
-          }
-
-          if let delegate {
-            // Call Frame Processor (delegate) for every Video Frame
-            delegate.onFrame(
-              sampleBuffer: blurredBuffer, orientation: orientation, isMirrored: isMirrored)
-          }
-      } else {
-          if let recordingSession {
-            do {
-              // Write the Video Buffer to the .mov/.mp4 file
-              try recordingSession.append(buffer: sampleBuffer, ofType: .video)
-            } catch let error as CameraError {
-              delegate?.onError(error)
-            } catch {
-              delegate?.onError(.capture(.unknown(message: error.localizedDescription)))
-            }
-          }
-
-          if let delegate {
-            // Call Frame Processor (delegate) for every Video Frame
-            delegate.onFrame(sampleBuffer: sampleBuffer, orientation: orientation, isMirrored: isMirrored)
-          }
+    let sbf = configuration?.shouldBlurFace == true
+    if sbf {
+      guard let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else {
+        os_log("Failed to get pixel buffer from sample buffer", log: logger, type: .error)
+        return
       }
+
+      var ciImage = CIImage(cvPixelBuffer: pixelBuffer)
+
+      // Apply orientation correction
+      ciImage = ciImage.oriented(orientation.cgImagePropertyOrientation)
+
+      // Detect faces
+      let faceDetectionRequest = VNDetectFaceLandmarksRequest()
+      do {
+        try faceDetector.perform([faceDetectionRequest], on: ciImage, orientation: .up)
+      } catch {
+        os_log(
+          "Face detection failed: %{public}@", log: logger, type: .error, error.localizedDescription
+        )
+      }
+
+      let faces = faceDetectionRequest.results as? [VNFaceObservation] ?? []
+      os_log("Detected %d faces", log: logger, type: .debug, faces.count)
+
+      // Blur detected faces
+      let blurredImage = applyFaceBlur(to: ciImage, faces: faces)
+
+      if isDebugMode {
+        frameCount += 1
+        if frameCount % 60 == 0 { // Save every 60th frame
+          saveImageForDebug(ciImage: blurredImage, prefix: "blurred", orientation: orientation)
+          saveImageForDebug(ciImage: ciImage, prefix: "original", orientation: orientation)
+
+          // Log face detection details
+          for (index, face) in faces.enumerated() {
+            let faceBounds = face.boundingBox
+            os_log(
+              "Face %d detected at normalized rect: {{%f, %f}, {%f, %f}}", log: logger, type: .debug,
+              index, faceBounds.origin.x, faceBounds.origin.y, faceBounds.size.width,
+              faceBounds.size.height
+            )
+          }
+        }
+      }
+
+      // Convert back to CMSampleBuffer
+      guard
+        let blurredBuffer = blurredImage.toCMSampleBuffer(
+          from: sampleBuffer, ciContext: ciContext
+        )
+      else {
+        os_log("Failed to convert blurred image to sample buffer", log: logger, type: .error)
+        return
+      }
+
+      if let recordingSession {
+        do {
+          // Write the blurred Video Buffer to the RecordingSession
+          try recordingSession.append(buffer: blurredBuffer, ofType: .video)
+        } catch {
+          os_log(
+            "Recording failed: %{public}@", log: logger, type: .error, error.localizedDescription
+          )
+          delegate?.onError(.capture(.unknown(message: error.localizedDescription)))
+        }
+      }
+
+      if let delegate {
+        // Call Frame Processor (delegate) for every Video Frame
+        delegate.onFrame(
+          sampleBuffer: blurredBuffer, orientation: orientation, isMirrored: isMirrored
+        )
+      }
+    } else {
+      if let recordingSession {
+        do {
+          // Write the Video Buffer to the .mov/.mp4 file
+          try recordingSession.append(buffer: sampleBuffer, ofType: .video)
+        } catch let error as CameraError {
+          delegate?.onError(error)
+        } catch {
+          delegate?.onError(.capture(.unknown(message: error.localizedDescription)))
+        }
+      }
+
+      if let delegate {
+        // Call Frame Processor (delegate) for every Video Frame
+        delegate.onFrame(sampleBuffer: sampleBuffer, orientation: orientation, isMirrored: isMirrored)
+      }
+    }
   }
 
   private func applyFaceBlur(to image: CIImage, faces: [VNFaceObservation]) -> CIImage {
@@ -405,11 +420,13 @@ final class CameraSession: NSObject, AVCaptureVideoDataOutputSampleBufferDelegat
     for (index, face) in faces.enumerated() {
       // Convert normalized coordinates to pixel coordinates
       let faceBounds = VNImageRectForNormalizedRect(
-        face.boundingBox, Int(imageSize.width), Int(imageSize.height))
+        face.boundingBox, Int(imageSize.width), Int(imageSize.height)
+      )
 
       // Add padding to face bounds (10% on each side)
       let paddedFaceBounds = faceBounds.insetBy(
-        dx: -faceBounds.width * 0.1, dy: -faceBounds.height * 0.1)
+        dx: -faceBounds.width * 0.1, dy: -faceBounds.height * 0.1
+      )
 
       // Ensure the blur area is within the image bounds
       let constrainedFaceBounds = paddedFaceBounds.intersection(image.extent)
@@ -426,14 +443,16 @@ final class CameraSession: NSObject, AVCaptureVideoDataOutputSampleBufferDelegat
           parameters: [
             kCIInputBackgroundImageKey: image.cropped(to: constrainedFaceBounds),
             kCIInputMaskImageKey: maskImage,
-          ])
+          ]
+        )
 
         // Composite the blurred face onto the original image
         outputImage = maskedBlur.composited(over: outputImage)
 
         os_log(
           "Applied blur to face %d at rect: %@", log: logger, type: .debug, index,
-          NSCoder.string(for: constrainedFaceBounds))
+          NSCoder.string(for: constrainedFaceBounds)
+        )
       } else {
         os_log("Failed to apply blur to face %d", log: logger, type: .error, index)
       }
@@ -466,7 +485,8 @@ final class CameraSession: NSObject, AVCaptureVideoDataOutputSampleBufferDelegat
 
     guard
       let cgImage = ciContext.createCGImage(
-        ciImage, from: ciImage.extent, format: .RGBA8, colorSpace: colorSpace)
+        ciImage, from: ciImage.extent, format: .RGBA8, colorSpace: colorSpace
+      )
     else {
       os_log("Failed to create CGImage", log: logger, type: .error)
       return
@@ -484,7 +504,8 @@ final class CameraSession: NSObject, AVCaptureVideoDataOutputSampleBufferDelegat
       os_log("Saved debug image: %@", log: logger, type: .debug, fileURL.path)
     } catch {
       os_log(
-        "Failed to save debug image: %@", log: logger, type: .error, error.localizedDescription)
+        "Failed to save debug image: %@", log: logger, type: .error, error.localizedDescription
+      )
     }
   }
 
@@ -561,7 +582,8 @@ extension CIImage {
       Int(extent.height),
       kCVPixelFormatType_32BGRA,
       attrs,
-      &pixelBuffer)
+      &pixelBuffer
+    )
 
     guard let pixelBuffer = pixelBuffer else { return nil }
 
@@ -573,7 +595,8 @@ extension CIImage {
 
     var videoInfo: CMVideoFormatDescription?
     CMVideoFormatDescriptionCreateForImageBuffer(
-      allocator: kCFAllocatorDefault, imageBuffer: pixelBuffer, formatDescriptionOut: &videoInfo)
+      allocator: kCFAllocatorDefault, imageBuffer: pixelBuffer, formatDescriptionOut: &videoInfo
+    )
 
     CMSampleBufferCreateForImageBuffer(
       allocator: kCFAllocatorDefault,
@@ -583,7 +606,8 @@ extension CIImage {
       refcon: nil,
       formatDescription: videoInfo!,
       sampleTiming: &timingInfo,
-      sampleBufferOut: &newSampleBuffer)
+      sampleBufferOut: &newSampleBuffer
+    )
 
     return newSampleBuffer
   }
