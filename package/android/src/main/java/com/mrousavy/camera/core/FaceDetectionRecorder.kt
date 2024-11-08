@@ -48,7 +48,7 @@ class FaceDetectionRecorder(private val context: Context) {
   private var frameCount: Long = 0
 
   private val options = FaceDetectorOptions.Builder()
-    .setPerformanceMode(FaceDetectorOptions.PERFORMANCE_MODE_FAST)
+    .setPerformanceMode(FaceDetectorOptions.PERFORMANCE_MODE_ACCURATE)
     .setContourMode(FaceDetectorOptions.CONTOUR_MODE_NONE)
     .setClassificationMode(FaceDetectorOptions.CLASSIFICATION_MODE_NONE)
     .setMinFaceSize(0.15f)
@@ -247,7 +247,7 @@ class FaceDetectionRecorder(private val context: Context) {
     val scaledRegion = Bitmap.createScaledBitmap(source, downscaledWidth, downscaledHeight, true)
 
     // Use smaller radius for lower-end devices
-    val blurRadius = if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) 10 else 20
+    val blurRadius = 10
     val pixels = IntArray(scaledRegion.width * scaledRegion.height)
     scaledRegion.getPixels(pixels, 0, scaledRegion.width, 0, 0, scaledRegion.width, scaledRegion.height)
     nativeStackBlur(pixels, scaledRegion.width, scaledRegion.height, blurRadius)
