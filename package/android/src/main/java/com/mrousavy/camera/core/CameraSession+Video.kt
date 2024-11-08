@@ -43,9 +43,9 @@ fun CameraSession.startRecording(
   pendingRecording = pendingRecording.asPersistentRecording()
 
   val timestampMS = System.currentTimeMillis()
-  val processedVideoFile = File(context.cacheDir, "processed_video_${timestampMS}.mp4")
-  val processedAudioFile = File(context.cacheDir, "processed_audio_${timestampMS}.m4a")
-  val finalProcessedFile = File(context.cacheDir, "final_video_${timestampMS}.mp4")
+  val processedVideoFile = File(context.cacheDir, "processed_video_$timestampMS.mp4")
+  val processedAudioFile = File(context.cacheDir, "processed_audio_$timestampMS.m4a")
+  val finalProcessedFile = File(context.cacheDir, "final_video_$timestampMS.mp4")
 
   isRecordingCanceled = false
   var hasReceivedFrames = false
@@ -124,8 +124,8 @@ fun CameraSession.startRecording(
           val video = Video(finalProcessedFile.absolutePath, durationMs, size)
           callback(video)
 
-          processedVideoFile.delete();
-          processedAudioFile.delete();
+          processedVideoFile.delete()
+          processedAudioFile.delete()
         } else {
           val path = event.outputResults.outputUri.path ?: throw UnknownRecorderError(false, null)
           val size = videoOutput.attachedSurfaceResolution ?: Size(0, 0)

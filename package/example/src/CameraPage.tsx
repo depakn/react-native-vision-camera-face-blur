@@ -29,6 +29,7 @@ import { useIsFocused } from '@react-navigation/core'
 import { usePreferredCameraDevice } from './hooks/usePreferredCameraDevice'
 import { examplePlugin } from './frame-processors/ExamplePlugin'
 import { exampleKotlinSwiftPlugin } from './frame-processors/ExampleKotlinSwiftPlugin'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 const ReanimatedCamera = Reanimated.createAnimatedComponent(Camera)
 Reanimated.addWhitelistedNativeProps({
@@ -40,6 +41,7 @@ const SCALE_FULL_ZOOM = 3
 type Props = NativeStackScreenProps<Routes, 'CameraPage'>
 export function CameraPage({ navigation }: Props): React.ReactElement {
   const camera = useRef<Camera>(null)
+  const insets = useSafeAreaInsets()
   const [isCameraInitialized, setIsCameraInitialized] = useState(false)
   const microphone = useMicrophonePermission()
   const location = useLocationPermission()
@@ -253,7 +255,7 @@ export function CameraPage({ navigation }: Props): React.ReactElement {
 
       <StatusBarBlurBackground />
 
-      <View style={styles.rightButtonRow}>
+      <View style={[styles.rightButtonRow, { marginTop: insets.top + 10 }]}>
         <PressableOpacity style={styles.button} onPress={onFlipCameraPressed} disabledOpacity={0.4}>
           <IonIcon name="camera-reverse" color="white" size={24} />
         </PressableOpacity>

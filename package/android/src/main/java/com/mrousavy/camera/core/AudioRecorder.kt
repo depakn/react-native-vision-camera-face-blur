@@ -41,4 +41,3 @@ class AudioRecorder(private val outputFile: File) {
     mediaRecorder = null
   }
 }
-

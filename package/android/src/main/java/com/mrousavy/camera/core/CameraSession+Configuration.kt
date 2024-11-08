@@ -144,7 +144,7 @@ internal fun CameraSession.configureOutputs(configuration: CameraConfiguration) 
       if (fpsRange != null) {
         assertFormatRequirement("fps", format, InvalidFpsError(fpsRange.upper)) {
           fpsRange.lower >= it.minFps &&
-              fpsRange.upper <= it.maxFps
+            fpsRange.upper <= it.maxFps
         }
         video.setTargetFrameRate(fpsRange)
       }
@@ -174,12 +174,12 @@ internal fun CameraSession.configureOutputs(configuration: CameraConfiguration) 
     val pixelFormat = frameProcessorConfig.config.pixelFormat
     Log.i(CameraSession.TAG, "Creating $pixelFormat Frame Processor output...")
     val analyzer = ImageAnalysis.Builder().also { analysis ->
-      analysis.setBackpressureStrategy(ImageAnalysis.STRATEGY_BLOCK_PRODUCER)
+      analysis.setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
       analysis.setOutputImageFormat(pixelFormat.toImageAnalysisFormat())
       if (fpsRange != null) {
         assertFormatRequirement("fps", format, InvalidFpsError(fpsRange.upper)) {
           fpsRange.lower >= it.minFps &&
-              fpsRange.upper <= it.maxFps
+            fpsRange.upper <= it.maxFps
         }
         analysis.setTargetFrameRate(fpsRange)
       }

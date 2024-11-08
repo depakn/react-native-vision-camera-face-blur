@@ -13,6 +13,7 @@ import { StatusBarBlurBackground } from './views/StatusBarBlurBackground'
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
 import type { Routes } from './Routes'
 import { useIsFocused } from '@react-navigation/core'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 const requestSavePermission = async (): Promise<boolean> => {
   // On Android 13 and above, scoped storage is used instead and no permission is needed
@@ -37,6 +38,7 @@ export function MediaPage({ navigation, route }: Props): React.ReactElement {
   const [hasMediaLoaded, setHasMediaLoaded] = useState(false)
   const isForeground = useIsForeground()
   const isScreenFocused = useIsFocused()
+  const insets = useSafeAreaInsets()
   const isVideoPaused = !isForeground || !isScreenFocused
   const [savingState, setSavingState] = useState<'none' | 'saving' | 'saved'>('none')
 
@@ -112,7 +114,7 @@ export function MediaPage({ navigation, route }: Props): React.ReactElement {
         />
       )}
 
-      <PressableOpacity style={styles.closeButton} onPress={navigation.goBack}>
+      <PressableOpacity style={[styles.closeButton, { marginTop: insets.top + 10 }]} onPress={navigation.goBack}>
         <IonIcon name="close" size={35} color="white" style={styles.icon} />
       </PressableOpacity>
 

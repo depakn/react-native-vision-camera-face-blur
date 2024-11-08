@@ -1,6 +1,6 @@
-import React, { useCallback, useRef } from 'react'
+import React, { useCallback, useRef, useState } from 'react'
 import type { ViewProps } from 'react-native'
-import { StyleSheet, View } from 'react-native'
+import { Button, StyleSheet, View } from 'react-native'
 import type { PanGestureHandlerGestureEvent, TapGestureHandlerStateChangeEvent } from 'react-native-gesture-handler'
 import { PanGestureHandler, State, TapGestureHandler } from 'react-native-gesture-handler'
 import Reanimated, {
@@ -52,6 +52,7 @@ const _CaptureButton: React.FC<Props> = ({
   const isRecording = useRef(false)
   const recordingProgress = useSharedValue(0)
   const isPressingButton = useSharedValue(false)
+  const [isRecordingVideo, setIsRecordingVideo] = useState(false)
 
   //#region Camera Capture
   const takePhoto = useCallback(async () => {
@@ -246,29 +247,51 @@ const _CaptureButton: React.FC<Props> = ({
   }, [enabled, isPressingButton])
 
   return (
-    <TapGestureHandler
-      enabled={enabled}
-      ref={tapHandler}
-      onHandlerStateChange={onHandlerStateChanged}
-      shouldCancelWhenOutside={false}
-      maxDurationMs={99999999} // <-- this prevents the TapGestureHandler from going to State.FAILED when the user moves his finger outside of the child view (to zoom)
-      simultaneousHandlers={panHandler}>
-      <Reanimated.View {...props} style={[buttonStyle, style]}>
-        <PanGestureHandler
-          enabled={enabled}
-          ref={panHandler}
-          failOffsetX={[-SCREEN_WIDTH, SCREEN_WIDTH]}
-          activeOffsetY={[-2, 2]}
-          onGestureEvent={onPanGestureEvent}
-          simultaneousHandlers={tapHandler}>
-          <Reanimated.View style={styles.flex}>
-            <Reanimated.View style={[styles.shadow, shadowStyle]} />
-            <View style={styles.button} />
-          </Reanimated.View>
-        </PanGestureHandler>
-      </Reanimated.View>
-    </TapGestureHandler>
+    <View style={{ position: 'absolute', bottom: 15, alignItems: 'center', width: '100%' }}>
+      {isRecordingVideo ? (
+        <Button
+          title="Stop Recording"
+          onPress={() => {
+            stopRecording()
+            setIsRecordingVideo(false)
+          }}
+        />
+      ) : (
+        <Button
+          title="Start Recording"
+          onPress={() => {
+            startRecording()
+            setIsRecordingVideo(true)
+          }}
+        />
+      )}
+    </View>
   )
+
+  // return (
+  //   <TapGestureHandler
+  //     enabled={enabled}
+  //     ref={tapHandler}
+  //     onHandlerStateChange={onHandlerStateChanged}
+  //     shouldCancelWhenOutside={false}
+  //     maxDurationMs={99999999} // <-- this prevents the TapGestureHandler from going to State.FAILED when the user moves his finger outside of the child view (to zoom)
+  //     simultaneousHandlers={panHandler}>
+  //     <Reanimated.View {...props} style={[buttonStyle, style]}>
+  //       <PanGestureHandler
+  //         enabled={enabled}
+  //         ref={panHandler}
+  //         failOffsetX={[-SCREEN_WIDTH, SCREEN_WIDTH]}
+  //         activeOffsetY={[-2, 2]}
+  //         onGestureEvent={onPanGestureEvent}
+  //         simultaneousHandlers={tapHandler}>
+  //         <Reanimated.View style={styles.flex}>
+  //           <Reanimated.View style={[styles.shadow, shadowStyle]} />
+  //           <View style={styles.button} />
+  //         </Reanimated.View>
+  //       </PanGestureHandler>
+  //     </Reanimated.View>
+  //   </TapGestureHandler>
+  // )
 }
 
 export const CaptureButton = React.memo(_CaptureButton)
